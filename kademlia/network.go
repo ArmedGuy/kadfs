@@ -1,10 +1,30 @@
 package kademlia
 
+import (
+	"log"
+	"net"
+)
+
 type Network struct {
+	Me *Contact
 }
 
-func Listen(ip string, port int) {
-	// TODO
+func (network *Network) Listen(stateq chan StateTransition) {
+	log.Println("[INFO] kademlia: Listening, accepting RPCs on", network.Me.Address)
+	addr, _ := net.ResolveUDPAddr("udp", network.Me.Address)
+	conn, _ := net.ListenUDP("udp", addr)
+	header := make([]byte, 4)
+
+	for {
+		if read, err := conn.Read(sizeBuf); err != nil {
+			continue
+		} else {
+			if read != 4 {
+				continue
+			}
+
+		}
+	}
 }
 
 func (network *Network) SendPingMessage(contact *Contact) {
