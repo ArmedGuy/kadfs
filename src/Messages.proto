@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package Messages; 
+
+message NetworkMessage {
+    int32 type = 1;
+    bool request = 2;
+    int32 context = 3;
+    bytes payload = 4;
+}
+
+message dabes {
+    string message = 1;
+}
