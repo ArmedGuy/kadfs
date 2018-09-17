@@ -1,6 +1,8 @@
 package kademlia
 
 import (
+	"bytes"
+	"encoding/binary"
 	"log"
 	"net"
 )
@@ -13,17 +15,27 @@ func (network *Network) Listen(stateq chan StateTransition) {
 	log.Println("[INFO] kademlia: Listening, accepting RPCs on", network.Me.Address)
 	addr, _ := net.ResolveUDPAddr("udp", network.Me.Address)
 	conn, _ := net.ListenUDP("udp", addr)
-	header := make([]byte, 4)
+	sizeOf := make([]byte, 4)
 
 	for {
-		if read, err := conn.Read(sizeBuf); err != nil {
+		// read int32
+		readSize, err := conn.Read(sizeOf)
+		if err != nil {
 			continue
-		} else {
-			if read != 4 {
-				continue
-			}
-
 		}
+		if readSize != 4 {
+			continue
+		}
+		var size int
+		_ = binary.Read(bytes.NewReader(sizeOf), binary.BigEndian, &size)
+		// read header
+		header := make([]byte, size)
+		readHeader, err := conn.Read(header)
+		if readHeader != size {
+			continue
+		}
+		// deserialize header, get length, and read length
+
 	}
 }
 
