@@ -11,7 +11,7 @@ type Network struct {
 	Me *Contact
 }
 
-func (network *Network) Listen(stateq chan StateTransition) {
+func (network *Network) Listen() {
 	log.Println("[INFO] kademlia: Listening, accepting RPCs on", network.Me.Address)
 	addr, _ := net.ResolveUDPAddr("udp", network.Me.Address)
 	conn, _ := net.ListenUDP("udp", addr)
