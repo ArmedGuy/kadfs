@@ -2,6 +2,7 @@ package kademlia
 
 import (
 	"time"
+  "github.com/ArmedGuy/kadfs/message"
 )
 
 type Kademlia struct {
@@ -12,6 +13,12 @@ type Kademlia struct {
 func NewKademliaState(me Contact, network KademliaNetwork) *Kademlia {
 	state := &Kademlia{}
 	state.RoutingTable = NewRoutingTable(me)
+	state.Network = &Network{
+		Me:            &me,
+		NextMessageID: 0,
+		Requests:      make(map[string]func(message.RPC, []byte)),
+		Responses:     make(map[int32]func(message.RPC, []byte)),
+	}
 	state.Network = network
 	return state
 }
@@ -58,6 +65,7 @@ func (kademlia *Kademlia) LookupContact(target *Contact) []Contact {
 			// this means that it wont end up in GetNewCandidates queries
 			candidate.Queried = true
 			//go kademlia.Network.SendFindNodeBlaBla(candidate.Contact, reschan)
+      go kademlia.Network.SendFindContactRequest(&element)
 		}
 		for handled > 0 {
 			// select response from channel or a timeout
