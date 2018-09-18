@@ -23,7 +23,7 @@ func (network *Network) Listen(stateq chan StateTransition) {
 	addr, _ := net.ResolveUDPAddr("udp", network.Me.Address)
 	conn, _ := net.ListenUDP("udp", addr)
 	network.Conn = conn
-	buf := make([]byte, 4096)
+	buf := make([]byte, 4096) // Come up with a reasonable size for this!
 	header := make([]byte, 4)
 
 	for {
@@ -62,18 +62,18 @@ func (network *Network) Listen(stateq chan StateTransition) {
 				return
 			}
 
-			log.Printf("Head length: %v, Message length: %v \n", read, messageLength)
-
-			// Map request/responses to function based on message ID
+			// Map request/responses to function based on message remoteProcedure/ID
 			if rpcMessage.Request {
 				if callback, ok := network.Requests[rpcMessage.RemoteProcedure]; ok {
 					go callback(*rpcMessage, payloadBuf)
 				} else {
-					log.Printf("No handler for %v\n", rpcMessage.RemoteProcedure)
+					log.Printf("No request handler for %v\n", rpcMessage.RemoteProcedure)
 				}
 			} else {
 				if callback, ok := network.Responses[rpcMessage.MessageId]; ok {
 					go callback(*rpcMessage, payloadBuf)
+				} else {
+					log.Printf("No response handler for %v\n", rpcMessage.MessageId)
 				}
 			}
 		}
@@ -92,9 +92,7 @@ func (network *Network) SendUDPPacket(contact *Contact, data []byte) {
 		log.Printf("[WARNING] network1: %v\n", err)
 		return
 	}
-
 	network.Conn.WriteToUDP(data, raddr)
-
 }
 
 func (network *Network) SendPingMessage(contact *Contact) {
@@ -121,6 +119,9 @@ func (network *Network) SendFindContactRequest(contact *Contact) {
 	b.Write(rpcData)
 
 	network.SendUDPPacket(contact, b.Bytes())
+
+	// Register message response mapping for this unique message ID
+	network.Responses[messageID] = HandleFindContactResponse
 
 	log.Printf("Sent a find contact packet")
 }
