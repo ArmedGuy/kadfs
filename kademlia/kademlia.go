@@ -2,7 +2,8 @@ package kademlia
 
 import (
 	"time"
-  "github.com/ArmedGuy/kadfs/message"
+
+	"github.com/ArmedGuy/kadfs/message"
 )
 
 type Kademlia struct {
@@ -23,18 +24,13 @@ func NewKademliaState(me Contact, network KademliaNetwork) *Kademlia {
 	return state
 }
 
-type LookupResponse struct {
-	From     *Contact
-	Contacts []Contact
-}
-
 const alpha = 3
 
-func (kademlia *Kademlia) LookupContact(target *Contact) []Contact {
-	contacts := kademlia.RoutingTable.FindClosestContacts(target.ID, 20)
+func (kademlia *Kademlia) LookupContact(target *KademliaID) []Contact {
+	contacts := kademlia.RoutingTable.FindClosestContacts(target, 20)
 	var candidates TemporaryLookupTable
 	// load the lookup table with target ID. Is used to sort table with closest first
-	candidates.LookupTarget = target.ID
+	candidates.LookupTarget = target
 	candidates.Append(contacts)
 	candidates.Sort()
 	// we call the last sendout a panic send
@@ -65,7 +61,7 @@ func (kademlia *Kademlia) LookupContact(target *Contact) []Contact {
 			// this means that it wont end up in GetNewCandidates queries
 			candidate.Queried = true
 			//go kademlia.Network.SendFindNodeBlaBla(candidate.Contact, reschan)
-      go kademlia.Network.SendFindContactRequest(&element)
+			go kademlia.Network.SendFindContactMessage(candidate.Contact, target, reschan)
 		}
 		for handled > 0 {
 			// select response from channel or a timeout
@@ -95,7 +91,7 @@ func (kademlia *Kademlia) LookupContact(target *Contact) []Contact {
 		// calculate if best candidates have changed or not
 		newClosest := candidates.GetAvailableContacts(1)[0].ID
 		changed = false
-		if newClosest.CalcDistance(target.ID).Less(closest.CalcDistance(target.ID)) {
+		if newClosest.CalcDistance(target).Less(closest.CalcDistance(target)) {
 			changed = true
 			closest = newClosest
 		}
