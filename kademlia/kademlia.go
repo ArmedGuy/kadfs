@@ -1,5 +1,8 @@
 package kademlia
 
+const Alpha = 3
+const k = 20
+
 type Kademlia struct {
 	Queue        chan StateTransition
 	RoutingTable *RoutingTable
@@ -17,7 +20,17 @@ func NewKademliaState(me Contact) *Kademlia {
 }
 
 func (kademlia *Kademlia) LookupContact(target *Contact) {
-	// TODO
+	// Look up the Alpha closest to target in our local routing table
+	contacts := kademlia.RoutingTable.FindClosestContacts(target.ID, Alpha)
+
+	// Send a message to these Alpha nodes to learn about their k closest to target
+	for _, element := range contacts {
+		// Channel or just go routine?
+		go kademlia.Network.SendFindContactMessage(&element)
+	}
+
+	// Do recursivly until there are no more contacts to query or no new contacts are discovered
+	// This is done in a "reciever thread" where we update the temporary list
 }
 
 func (kademlia *Kademlia) LookupData(hash string) {
