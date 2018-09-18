@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package message;
+
+// [RPC-LEN | RPC | Payload]
+
+message RPC {
+    int32 MessageId = 1;
+    string SenderId = 2;
+    string ReceiverId = 3;
+    string RemoteProcedure = 4;
+    int32 Length = 5;
+    bool Request = 6;
+    string SenderAddress = 7;
+}
+
+message FindDataMessage {
+    string hash = 1;
+}
+
+message SendDataMessage {
+    bytes data = 1;
+}
+
+message SendContactListMessage {
+    repeated Contact contact = 1;
+}
+
+message Contact {
+    string ID = 1;
+    string Address = 2;
+}
