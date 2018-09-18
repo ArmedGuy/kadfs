@@ -1,6 +1,8 @@
 package kademlia
 
 import (
+	"bytes"
+	"encoding/binary"
 	"log"
 	"net"
 
@@ -40,22 +42,7 @@ func (network *Network) NextID() int32 {
 	return x
 }
 
-func (network *Network) SendPingMessage(contact *Contact) {
-	// TODO
-}
-
-func (network *Network) SendFindContactRequest(contact *Contact) {
-	// Build the message and send a request to the contact
-	messageID := network.NextID()
-	m := network.CreateRPCMessage(contact, messageID, "FindContact", 0, true)
-
-	// build using bytes.buffer
-	data, err := proto.Marshal(m)
-	if err != nil {
-		log.Printf("[WARNING] network: %v\n", err)
-		return
-	}
-
+func (network *Network) SendUDPPacket(contact *Contact, data []byte) {
 	raddr, err := net.ResolveUDPAddr("udp", contact.Address)
 	if err != nil {
 		log.Printf("[WARNING] network: %v\n", err)
@@ -69,6 +56,32 @@ func (network *Network) SendFindContactRequest(contact *Contact) {
 	}
 	conn.WriteToUDP(data, raddr)
 
+}
+
+func (network *Network) SendPingMessage(contact *Contact) {
+	// TODO
+}
+
+func (network *Network) SendFindContactRequest(contact *Contact) {
+	// Build the message and send a request to the contact
+	messageID := network.NextID()
+	m := network.CreateRPCMessage(contact, messageID, "FindContact", 0, true)
+
+	// build using bytes.buffer
+	rpcData, err := proto.Marshal(m)
+	if err != nil {
+		log.Printf("[WARNING] network: %v\n", err)
+		return
+	}
+
+	header := make([]byte, 4)
+	binary.BigEndian.PutUint32(header, uint32(len(rpcData)))
+
+	var b bytes.Buffer
+	b.Write(header)
+	b.Write(rpcData)
+
+	network.SendUDPPacket(contact, b.Bytes())
 }
 
 /*
