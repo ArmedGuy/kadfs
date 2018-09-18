@@ -11,8 +11,7 @@ message RPC {
     string RemoteProcedure = 4;
     int32 Length = 5;
     bool Request = 6;
-    string SenderIp = 7;
-    string SenderPort = 8;
+    string SenderAddress = 7;
 }
 
 message FindDataMessage {
@@ -21,5 +20,14 @@ message FindDataMessage {
 
 message SendDataMessage {
     bytes data = 1;
+}
+
+message SendContactListMessage {
+    repeated Contact contact = 1;
+}
+
+message Contact {
+    string ID = 1;
+    string Address = 2;
 }
 

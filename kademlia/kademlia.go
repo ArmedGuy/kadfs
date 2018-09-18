@@ -14,7 +14,8 @@ func NewKademliaState(me Contact) *Kademlia {
 	state.Queue = make(chan StateTransition)
 	state.RoutingTable = NewRoutingTable(me)
 	state.Network = &Network{
-		Me: &me,
+		Me:            &me,
+		NextMessageID: 0,
 	}
 	return state
 }
@@ -26,8 +27,8 @@ func (kademlia *Kademlia) LookupContact(target *Contact) {
 	// Send a message to these Alpha nodes to learn about their k closest to target
 	for _, element := range contacts {
 		// Channel or just go routine?
+		go kademlia.Network.SendFindContactRequest(&element)
 
-		go kademlia.Network.SendFindContactMessage(&element)
 	}
 }
 
