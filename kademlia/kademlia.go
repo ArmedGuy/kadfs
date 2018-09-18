@@ -1,5 +1,7 @@
 package kademlia
 
+import "github.com/ArmedGuy/kadfs/message"
+
 const Alpha = 3
 const k = 20
 
@@ -16,6 +18,8 @@ func NewKademliaState(me Contact) *Kademlia {
 	state.Network = &Network{
 		Me:            &me,
 		NextMessageID: 0,
+		Requests:      make(map[string]func(message.RPC, []byte)),
+		Responses:     make(map[int32]func(message.RPC, []byte)),
 	}
 	return state
 }

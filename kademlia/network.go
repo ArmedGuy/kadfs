@@ -6,36 +6,35 @@ import (
 	"log"
 	"net"
 
-	"../message"
+	"github.com/ArmedGuy/kadfs/message"
 	"github.com/golang/protobuf/proto"
 )
 
 type Network struct {
 	Me            *Contact
 	NextMessageID int32
-	LocalAddress  *net.UDPAddr
-	Requests  map[int32]func(message.RPC, []byte)
-	Responses map[int32]func(message.RPC, []byte)
-}
-
-func handleError(err error) {
-	log.Println("[WARNIGN] network: %v", err)
+	Conn          *net.UDPConn
+	Requests      map[string]func(message.RPC, []byte)
+	Responses     map[int32]func(message.RPC, []byte)
 }
 
 func (network *Network) Listen(stateq chan StateTransition) {
 	log.Println("[INFO] kademlia: Listening, accepting RPCs on", network.Me.Address)
 	addr, _ := net.ResolveUDPAddr("udp", network.Me.Address)
 	conn, _ := net.ListenUDP("udp", addr)
-	network.LocalAddress = addr
+	network.Conn = conn
+	buf := make([]byte, 4096)
 	header := make([]byte, 4)
 
 	for {
-		if read, err := conn.Read(header); err != nil {
-			handleError(err) // Handle error
+		if read, err := conn.Read(buf); err != nil {
+			log.Printf("[WARNING] network: Could not read header, error: %v\n", err)
 			return
 		} else {
+			b := bytes.NewBuffer(buf)
+			read, _ = b.Read(header)
 			if read != 4 {
-				handleError(err) // Handle error
+				log.Printf("[WARNING] network: Incorrect header size read, got: %v\n", read)
 				return
 			}
 
@@ -45,28 +44,32 @@ func (network *Network) Listen(stateq chan StateTransition) {
 			messageLength := int32(binary.BigEndian.Uint32(header))
 			rpcMessageBuf := make([]byte, messageLength)
 
-			if _, err := conn.Read(rpcMessageBuf); err != nil {
-				handleError(err) // Handle error
+			if _, err := b.Read(rpcMessageBuf); err != nil {
+				log.Printf("[WARNING] network: Could not read into rpcbuf, error: %v\n", err)
 				return
 			}
 
 			rpcMessage := new(message.RPC)
 			if err = proto.Unmarshal(rpcMessageBuf, rpcMessage); err != nil {
-				handleError(err) // Handle error
+				log.Printf("[WARNING] network: Could not deserialize rpc, error: %v\n", err)
 				return
 			}
 
 			// We always read the payload as well
 			payloadBuf := make([]byte, rpcMessage.Length)
-			if _, err := conn.Read(payloadBuf); err != nil {
-				handleError(err) // Handle error
+			if _, err := b.Read(payloadBuf); err != nil {
+				log.Printf("[WARNING] network: Could not read payload into buffer, error: %v\n", err)
 				return
 			}
 
+			log.Printf("Head length: %v, Message length: %v \n", read, messageLength)
+
 			// Map request/responses to function based on message ID
 			if rpcMessage.Request {
-				if callback, ok := network.Requests[rpcMessage.MessageId]; ok {
+				if callback, ok := network.Requests[rpcMessage.RemoteProcedure]; ok {
 					go callback(*rpcMessage, payloadBuf)
+				} else {
+					log.Printf("No handler for %v\n", rpcMessage.RemoteProcedure)
 				}
 			} else {
 				if callback, ok := network.Responses[rpcMessage.MessageId]; ok {
@@ -86,16 +89,11 @@ func (network *Network) NextID() int32 {
 func (network *Network) SendUDPPacket(contact *Contact, data []byte) {
 	raddr, err := net.ResolveUDPAddr("udp", contact.Address)
 	if err != nil {
-		log.Printf("[WARNING] network: %v\n", err)
+		log.Printf("[WARNING] network1: %v\n", err)
 		return
 	}
 
-	conn, err := net.DialUDP("udp", network.LocalAddress, raddr)
-	if err != nil {
-		log.Printf("[WARNING] network: %v\n", err)
-		return
-	}
-	conn.WriteToUDP(data, raddr)
+	network.Conn.WriteToUDP(data, raddr)
 
 }
 
@@ -123,6 +121,8 @@ func (network *Network) SendFindContactRequest(contact *Contact) {
 	b.Write(rpcData)
 
 	network.SendUDPPacket(contact, b.Bytes())
+
+	log.Printf("Sent a find contact packet")
 }
 
 /*
