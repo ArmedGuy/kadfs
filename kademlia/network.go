@@ -7,8 +7,21 @@ import (
 	"net"
 )
 
+type KademliaNetwork interface {
+	GetLocalContact() *Contact
+	Listen()
+	SendPingMessage(*Contact)
+	SendFindContactMessage(*Contact)
+	SendFindDataMessage(string)
+	SendStoreMessage(string, []byte)
+}
+
 type Network struct {
 	Me *Contact
+}
+
+func (network *Network) GetLocalContact() *Contact {
+	return network.Me
 }
 
 func (network *Network) Listen() {
@@ -51,6 +64,6 @@ func (network *Network) SendFindDataMessage(hash string) {
 	// TODO
 }
 
-func (network *Network) SendStoreMessage(data []byte) {
+func (network *Network) SendStoreMessage(hash string, data []byte) {
 	// TODO
 }

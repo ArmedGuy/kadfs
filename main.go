@@ -13,7 +13,10 @@ func main() {
 	me := kademlia.NewContact(id, "localhost:8001") // TODO: change
 
 	log.Printf("[INFO] kadfs: Creating new state for %v with ID %v\n", me.Address, me.ID)
-	state := kademlia.NewKademliaState(me)
+	network := &kademlia.Network{
+		Me: &me,
+	}
+	state := kademlia.NewKademliaState(me, network)
 
 	// start udp listener
 	go state.Network.Listen()
