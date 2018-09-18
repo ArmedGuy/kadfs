@@ -15,8 +15,8 @@ type Network struct {
 	Responses map[int32]func(message.RPC, []byte)
 }
 
-func HandleError(err error) {
-	log.Fatal(err)
+func handleError(err error) {
+	log.Println("[WARNIGN] network: %v", err)
 }
 
 func (network *Network) Listen(stateq chan StateTransition) {
@@ -27,10 +27,12 @@ func (network *Network) Listen(stateq chan StateTransition) {
 
 	for {
 		if read, err := conn.Read(header); err != nil {
-			HandleError(err) // Handle error
+			handleError(err) // Handle error
+			return
 		} else {
 			if read != 4 {
-				HandleError(err) // Handle error
+				handleError(err) // Handle error
+				return
 			}
 
 			//
@@ -40,20 +42,24 @@ func (network *Network) Listen(stateq chan StateTransition) {
 			rpcMessageBuf := make([]byte, messageLength)
 
 			if _, err := conn.Read(rpcMessageBuf); err != nil {
-				HandleError(err) // Handle error
+				handleError(err) // Handle error
+				return
 			}
 
 			rpcMessage := new(message.RPC)
 			if err = proto.Unmarshal(rpcMessageBuf, rpcMessage); err != nil {
-				HandleError(err) // Handle error
+				handleError(err) // Handle error
+				return
 			}
 
 			// We always read the payload as well
 			payloadBuf := make([]byte, rpcMessage.Length)
 			if _, err := conn.Read(payloadBuf); err != nil {
-				HandleError(err) // Handle error
+				handleError(err) // Handle error
+				return
 			}
 
+			// Map request/responses to function based on message ID
 			if rpcMessage.Request {
 				if callback, ok := network.Requests[rpcMessage.MessageId]; ok {
 					go callback(*rpcMessage, payloadBuf)
