@@ -30,3 +30,4 @@ message Contact {
     string ID = 1;
     string Address = 2;
 }
+

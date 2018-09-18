@@ -28,10 +28,8 @@ func (kademlia *Kademlia) LookupContact(target *Contact) {
 	for _, element := range contacts {
 		// Channel or just go routine?
 		go kademlia.Network.SendFindContactRequest(&element)
-	}
 
-	// Do recursivly until there are no more contacts to query or no new contacts are discovered
-	// This is done in a "reciever thread" where we update the temporary list
+	}
 }
 
 func (kademlia *Kademlia) LookupData(hash string) {
