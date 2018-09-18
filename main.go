@@ -19,8 +19,10 @@ func main() {
 	me2 := kademlia.NewContact(id2, "localhost:8002") // TODO: change
 
 	log.Printf("[INFO] kadfs: Creating new state for %v with ID %v\n", me.Address, me.ID)
-	state := kademlia.NewKademliaState(me)
-
+	network := &kademlia.Network{
+		Me: &me,
+	}
+	state := kademlia.NewKademliaState(me, network)
 	state2 := kademlia.NewKademliaState(me2)
 
 	go state.Network.Listen(state.Queue)
@@ -38,4 +40,5 @@ func main() {
 	}()
 
 	fmt.Scanln()
+
 }

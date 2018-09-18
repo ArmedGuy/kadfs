@@ -10,6 +10,15 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+type KademliaNetwork interface {
+	GetLocalContact() *Contact
+	Listen()
+	SendPingMessage(*Contact)
+	SendFindContactMessage(*Contact)
+	SendFindDataMessage(string)
+	SendStoreMessage(string, []byte)
+}
+
 type Network struct {
 	Me            *Contact
 	NextMessageID int32
@@ -18,13 +27,18 @@ type Network struct {
 	Responses     map[int32]func(message.RPC, []byte)
 }
 
-func (network *Network) Listen(stateq chan StateTransition) {
+func (network *Network) GetLocalContact() *Contact {
+	return network.Me
+}
+
+func (network *Network) Listen() {
 	log.Println("[INFO] kademlia: Listening, accepting RPCs on", network.Me.Address)
 	addr, _ := net.ResolveUDPAddr("udp", network.Me.Address)
 	conn, _ := net.ListenUDP("udp", addr)
 	network.Conn = conn
 	buf := make([]byte, 4096) // Come up with a reasonable size for this!
 	header := make([]byte, 4)
+
 
 	for {
 		if read, err := conn.Read(buf); err != nil {
@@ -144,7 +158,7 @@ func (network *Network) SendFindDataMessage(hash string) {
 	// TODO
 }
 
-func (network *Network) SendStoreMessage(data []byte) {
+func (network *Network) SendStoreMessage(hash string, data []byte) {
 	// TODO
 }
 
