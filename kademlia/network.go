@@ -145,27 +145,32 @@ type LookupResponse struct {
 	Contacts []Contact
 }
 
+// Return the buffer so its easy to pack with a payload vs returning the byte array?
+func (network *Network) CreateRPCPacketBuffer(message *message.RPC) bytes.Buffer {
+	var b bytes.Buffer
+	header := make([]byte, 4)
+
+	data, err := proto.Marshal(message)
+	if err != nil {
+		log.Printf("[WARNING] network: Could not searlize RPC, error: %v\n", err)
+	}
+
+	binary.BigEndian.PutUint32(header, uint32(len(data)))
+
+	b.Write(header)
+	b.Write(data)
+
+	return b
+}
+
 func (network *Network) SendFindNodeMessage(contact *Contact, target *KademliaID, reschan chan *LookupResponse) {
 	// Build the message and send a request to the contact
 	messageID := network.NextID()
-	m := network.CreateRPCMessage(contact, messageID, "FIND_NODE", 0, true)
+	m := network.CreateRPCMessage(contact, messageID, "FindContact", 0, true)
 
-	// build using bytes.buffer
-	rpcData, err := proto.Marshal(m)
-	if err != nil {
-		log.Printf("[WARNING] network: Could not serialize RPC, error: %v\n", err)
-		return
-	}
+	data := network.CreateRPCPacketBuffer(m)
 
-	header := make([]byte, 4)
-	binary.BigEndian.PutUint32(header, uint32(len(rpcData)))
-
-	var b bytes.Buffer
-	b.Write(header)
-	b.Write(rpcData)
-	// TODO write FindNodeRequest here also, maybe create internal function for everything above since it will be the same
-
-	network.SendUDPPacket(contact, b.Bytes())
+	network.SendUDPPacket(contact, data.Bytes())
 
 	// Register message response mapping for this unique message ID
 	network.Responses[messageID] = func(msg message.RPC, data []byte) {
@@ -183,6 +188,7 @@ func (network *Network) SendFindNodeMessage(contact *Contact, target *KademliaID
 	log.Printf("Sent a find contact packet")
 }
 
+<<<<<<< HEAD
 /*
 func (network *Network) SendFindContactResponse(contact *Contact, messageId int32) {
 	// Build the message and send a request to the contact
@@ -198,6 +204,9 @@ func (network *Network) SendFindContactResponse(contact *Contact, messageId int3
 */
 
 func (network *Network) SendFindValueMessage(hash string) {
+=======
+func (network *Network) SendFindDataMessage(hash string) {
+>>>>>>> e2ff03efa067bd4bcd968c0242cab81f515cd092
 	// TODO
 }
 
