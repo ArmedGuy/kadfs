@@ -90,6 +90,14 @@ func (kademlia *Kademlia) LookupContact(target *KademliaID) []Contact {
 		candidates.Sort()
 		// calculate if best candidates have changed or not
 		newClosest := candidates.GetAvailableContacts(1)[0].ID
+
+		//
+		// Comment:
+		//	Is it really enough to check if only the closest node have changed?
+		//	Can't it be that, say the 2nd and 3rd closest still have changed and you should proceed
+		//	even if the number one closest havn't changed?
+		//
+
 		changed = false
 		if newClosest.CalcDistance(target).Less(closest.CalcDistance(target)) {
 			changed = true
