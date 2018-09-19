@@ -2,7 +2,6 @@ package kademlia
 
 import (
 	"fmt"
-	"log"
 	"sort"
 )
 
@@ -109,11 +108,17 @@ type TemporaryLookupTable struct {
 	uniquemap    map[string]bool
 }
 
-func NewTemporaryLookupTable(target *KademliaID) *TemporaryLookupTable {
-	return &TemporaryLookupTable{
+func NewTemporaryLookupTable(local *Contact, target *KademliaID) *TemporaryLookupTable {
+	table := &TemporaryLookupTable{
 		LookupTarget: target,
 		uniquemap:    make(map[string]bool),
 	}
+	// set ourselves as in lookuptable and already queried
+	var initial []Contact
+	initial = append(initial, *local)
+	table.Append(initial)
+	table.GetNewCandidates(1)[0].Queried = true
+	return table
 }
 
 // Append an array of Contacts to the TemporaryLookupTable, and check if it already exists
@@ -122,10 +127,10 @@ func (table *TemporaryLookupTable) Append(contacts []Contact) {
 	for _, c := range contacts {
 		sid := c.ID.String()
 		if ok, _ := table.uniquemap[sid]; !ok {
-			newCandidates = append(newCandidates, &LookupCandidate{Contact: &c, Queried: false})
+			contact := c
+			newCandidates = append(newCandidates, &LookupCandidate{Contact: &contact, Queried: false})
 			table.uniquemap[sid] = true
 		}
-
 	}
 	table.candidates = append(table.candidates, newCandidates...)
 }
@@ -158,7 +163,6 @@ func (table *TemporaryLookupTable) GetAvailableContacts(count int) []Contact {
 func (table *TemporaryLookupTable) GetNewCandidates(count int) []*LookupCandidate {
 	var availCandidates []*LookupCandidate
 	for _, c := range table.candidates {
-		log.Printf("checking candidate %v\n", c.Contact)
 		if !c.Queried && c.Contact.IsAvailable() {
 			availCandidates = append(availCandidates, c)
 		}

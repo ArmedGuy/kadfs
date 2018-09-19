@@ -9,6 +9,15 @@ import (
 	"github.com/ArmedGuy/kadfs/s3"
 )
 
+func examineRoutingTable(state *kademlia.Kademlia) {
+	local := state.Network.GetLocalContact()
+	log.Println("----------------------------------------------------------------------------------")
+	log.Printf("Viewing routing table for node %v\n", local)
+	for i, c := range state.RoutingTable.FindClosestContacts(local.ID, 20) {
+		log.Printf("%v: %v at distance %v\n", i, c, local.ID.CalcDistance(c.ID))
+	}
+	log.Println("----------------------------------------------------------------------------------")
+}
 func main() {
 
 	id := kademlia.NewRandomKademliaID()
@@ -38,9 +47,13 @@ func main() {
 		time.Sleep(4 * time.Second)
 		state.Bootstrap(&me2)
 		time.Sleep(1 * time.Second)
+		examineRoutingTable(state)
+		examineRoutingTable(state2)
 		state2.Bootstrap(&me3)
 		time.Sleep(5 * time.Second)
-		state3.RoutingTable.FindClosestContacts(id3, 20)
+		examineRoutingTable(state)
+		examineRoutingTable(state2)
+		examineRoutingTable(state3)
 	}()
 
 	fmt.Scanln()

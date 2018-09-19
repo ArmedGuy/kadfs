@@ -142,8 +142,6 @@ func (network *Network) SendFindNodeMessage(contact *Contact, target *KademliaID
 			break // nobody read our channel after 5 seconds, they must assumed we timed out
 		}
 	}
-
-	log.Printf("Sent a find contact packet")
 }
 
 func (network *Network) SendFindValueMessage(hash string) {

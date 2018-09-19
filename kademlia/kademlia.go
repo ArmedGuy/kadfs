@@ -29,7 +29,7 @@ func (kademlia *Kademlia) Bootstrap(bootstrap *Contact) {
 
 func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
 	contacts := kademlia.RoutingTable.FindClosestContacts(target, K)
-	candidates := NewTemporaryLookupTable(target)
+	candidates := NewTemporaryLookupTable(kademlia.Network.GetLocalContact(), target)
 	candidates.Append(contacts)
 	candidates.Sort()
 	// we call the last sendout a panic send
@@ -107,11 +107,11 @@ func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
 			log.Println("No available contacts!")
 			return newClosest
 		}
-		newClosestId := newClosest[0].ID
+		newClosestID := newClosest[0].ID
 		changed = false
-		if newClosestId.CalcDistance(target).Less(closest.CalcDistance(target)) {
+		if newClosestID.CalcDistance(target).Less(closest.CalcDistance(target)) {
 			changed = true
-			closest = newClosestId
+			closest = newClosestID
 		}
 	}
 }
