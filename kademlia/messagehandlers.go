@@ -4,33 +4,32 @@ import (
 	"log"
 
 	"github.com/ArmedGuy/kadfs/message"
-	"github.com/golang/protobuf/proto"
 )
 
 func (network *Network) registerMessageHandlers() {
-	network.SetRequestHandler("FIND_NODE", func(msg message.RPC, data []byte) {
-		rpcPayload := new(message.FindNodeRequest)
-		if err := proto.Unmarshal(data, rpcPayload); err != nil {
-			log.Printf("[WARNING] messagehandler: Could not deserialize rpc payload, error: %v\n", err)
-			return
-		}
-		target := NewKademliaID(rpcPayload.TargetID)
+	network.SetRequestHandler("FIND_NODE", func(sender *Contact, rpc *RPCMessage) {
+		req := new(message.FindNodeRequest)
+		rpc.GetMessageFromPayload(req)
+		target := NewKademliaID(req.TargetID)
+
 		contacts := network.kademlia.RoutingTable.FindClosestContacts(target, K)
-		rpcResponse := new(message.FindNodeResponse)
+		res := new(message.FindNodeResponse)
 		for _, c := range contacts {
-			rpcResponse.Contacts = append(rpcResponse.Contacts, &message.Contact{
+			res.Contacts = append(res.Contacts, &message.Contact{
 				ID:      c.ID.String(),
 				Address: c.Address,
 			})
 		}
-		m := network.CreateRPCMessage(contact, messageID, "FIND_NODE", 0, false)
+		resRpc := rpc.GetResponse()
+		resRpc.SetPayloadFromMessage(res)
+		network.SendUDPPacket(sender, resRpc.GetBytes())
 	})
 
-	network.SetRequestHandler("FIND_VALUE", func(msg message.RPC, data []byte) {
+	network.SetRequestHandler("FIND_VALUE", func(sender *Contact, rpc *RPCMessage) {
 		log.Println("Find value")
 	})
 
-	network.SetRequestHandler("PING", func(msg message.RPC, data []byte) {
+	network.SetRequestHandler("PING", func(sender *Contact, rpc *RPCMessage) {
 		log.Println("Ping")
 	})
 }

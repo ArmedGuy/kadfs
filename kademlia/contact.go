@@ -2,8 +2,8 @@ package kademlia
 
 import (
 	"fmt"
+	"log"
 	"sort"
-	"sync"
 )
 
 // Contact definition
@@ -13,12 +13,11 @@ type Contact struct {
 	Address     string
 	distance    *KademliaID
 	isAvailable bool
-	lock        *sync.RWMutex
 }
 
 // NewContact returns a new instance of a Contact
 func NewContact(id *KademliaID, address string) Contact {
-	return Contact{id, address, nil, true, &sync.RWMutex{}}
+	return Contact{id, address, nil, true}
 }
 
 // CalcDistance calculates the distance to the target and
@@ -38,16 +37,12 @@ func (contact *Contact) String() string {
 }
 
 func (contact *Contact) IsAvailable() bool {
-	contact.lock.RLock()
 	res := contact.isAvailable
-	contact.lock.RUnlock()
 	return res
 }
 
 func (contact *Contact) SetAvailable(set bool) {
-	contact.lock.Lock()
 	contact.isAvailable = set
-	contact.lock.Unlock()
 }
 
 // ContactCandidates definition
@@ -111,13 +106,26 @@ type LookupCandidate struct {
 type TemporaryLookupTable struct {
 	candidates   []*LookupCandidate
 	LookupTarget *KademliaID
+	uniquemap    map[string]bool
+}
+
+func NewTemporaryLookupTable(target *KademliaID) *TemporaryLookupTable {
+	return &TemporaryLookupTable{
+		LookupTarget: target,
+		uniquemap:    make(map[string]bool),
+	}
 }
 
 // Append an array of Contacts to the TemporaryLookupTable, and check if it already exists
 func (table *TemporaryLookupTable) Append(contacts []Contact) {
 	var newCandidates []*LookupCandidate
 	for _, c := range contacts {
-		newCandidates = append(newCandidates, &LookupCandidate{Contact: &c, Queried: false})
+		sid := c.ID.String()
+		if ok, _ := table.uniquemap[sid]; !ok {
+			newCandidates = append(newCandidates, &LookupCandidate{Contact: &c, Queried: false})
+			table.uniquemap[sid] = true
+		}
+
 	}
 	table.candidates = append(table.candidates, newCandidates...)
 }
@@ -150,6 +158,7 @@ func (table *TemporaryLookupTable) GetAvailableContacts(count int) []Contact {
 func (table *TemporaryLookupTable) GetNewCandidates(count int) []*LookupCandidate {
 	var availCandidates []*LookupCandidate
 	for _, c := range table.candidates {
+		log.Printf("checking candidate %v\n", c.Contact)
 		if !c.Queried && c.Contact.IsAvailable() {
 			availCandidates = append(availCandidates, c)
 		}

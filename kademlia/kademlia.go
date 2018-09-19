@@ -29,9 +29,7 @@ func (kademlia *Kademlia) Bootstrap(bootstrap *Contact) {
 
 func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
 	contacts := kademlia.RoutingTable.FindClosestContacts(target, K)
-	var candidates TemporaryLookupTable
-	// load the lookup table with target ID. Is used to sort table with closest first
-	candidates.LookupTarget = target
+	candidates := NewTemporaryLookupTable(target)
 	candidates.Append(contacts)
 	candidates.Sort()
 	// we call the last sendout a panic send
@@ -43,16 +41,20 @@ func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
 	for {
 		// get alpha new candidates to send to
 		sendto := candidates.GetNewCandidates(alpha)
+		// special case, cant send to anybody, just return what I got now
+		if len(sendto) == 0 {
+			return candidates.GetAvailableContacts(K)
+		}
 		if !changed {
 			log.Println("did not change")
 			if panic {
 				// panic already sent, return best list
-				return candidates.GetAvailableContacts(20)
+				return candidates.GetAvailableContacts(K)
 			}
 			// "panic send"
 			log.Println("sending panic")
 			panic = true
-			sendto = candidates.GetNewCandidates(20)
+			sendto = candidates.GetNewCandidates(K)
 		} else {
 			panic = false // reset panic if new closest found
 		}
@@ -81,6 +83,9 @@ func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
 					}
 				}
 				log.Println("got response")
+				for _, c := range response.Contacts {
+					log.Printf("got contact %v\n", c)
+				}
 				sendto = tmp
 				candidates.Append(response.Contacts)
 				break

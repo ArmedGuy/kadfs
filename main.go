@@ -37,6 +37,7 @@ func main() {
 	go func() {
 		time.Sleep(4 * time.Second)
 		state.Bootstrap(&me2)
+		time.Sleep(1 * time.Second)
 		state2.Bootstrap(&me3)
 		time.Sleep(5 * time.Second)
 		state3.RoutingTable.FindClosestContacts(id3, 20)
