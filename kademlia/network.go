@@ -175,18 +175,6 @@ func (network *Network) SendFindContactMessage(contact *Contact, target *Kademli
 	log.Printf("Sent a find contact packet")
 }
 
-/*
-func (network *Network) SendFindContactResponse(contact *Contact, messageId int32, payload []byte) {
-	// Build the message and send a request to the contact
-
-	m := network.CreateRPCMessage(contact, messageId, "FindContact", x, false)
-
-
-
-
-}
-*/
-
 func (network *Network) SendFindDataMessage(hash string) {
 	// TODO
 }
