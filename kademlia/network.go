@@ -15,10 +15,11 @@ type KademliaNetwork interface {
 	GetLocalContact() *Contact
 	Listen()
 	SendPingMessage(*Contact)
-	SendFindContactMessage(*Contact, *KademliaID, chan *LookupResponse)
-	SendFindDataMessage(string)
+	SendFindNodeMessage(*Contact, *KademliaID, chan *LookupResponse)
+	SendFindValueMessage(string)
 	SendStoreMessage(string, []byte)
 	SetRequestHandler(string, func(message.RPC, []byte))
+	SetState(*Kademlia)
 }
 
 type Network struct {
@@ -27,19 +28,27 @@ type Network struct {
 	Conn          *net.UDPConn
 	Requests      map[string]func(message.RPC, []byte)
 	Responses     map[int32]func(message.RPC, []byte)
+	kademlia      *Kademlia
 }
 
 func NewNetwork(me *Contact) *Network {
-	return &Network{
+	network := &Network{
 		Me:            me,
 		NextMessageID: 0,
 		Requests:      make(map[string]func(message.RPC, []byte)),
 		Responses:     make(map[int32]func(message.RPC, []byte)),
 	}
+	network.registerMessageHandlers()
+	return network
+
 }
 
 func (network *Network) GetLocalContact() *Contact {
 	return network.Me
+}
+
+func (network *Network) SetState(state *Kademlia) {
+	network.kademlia = state
 }
 
 func (network *Network) SetRequestHandler(rpc string, fn func(message.RPC, []byte)) {
@@ -55,10 +64,12 @@ func (network *Network) Listen() {
 	header := make([]byte, 4)
 
 	for {
-		if read, _, err := conn.ReadFromUDP(buf); err != nil { // TODO: extract and use caddr
+		if read, caddr, err := conn.ReadFromUDP(buf); err != nil { // TODO: extract and use caddr
 			log.Printf("[WARNING] network: Could not read header, error: %v\n", err)
 			return
 		} else {
+			sender := caddr.String()
+
 			b := bytes.NewBuffer(buf)
 			read, _ = b.Read(header)
 			if read != 4 {
@@ -90,6 +101,8 @@ func (network *Network) Listen() {
 				return
 			}
 
+			contact := Contact{Address: sender, ID: NewKademliaID(rpcMessage.SenderId)}
+			go network.kademlia.RoutingTable.AddContact(contact)
 			// Map request/responses to function based on message remoteProcedure/ID
 			if rpcMessage.Request {
 				if callback, ok := network.Requests[rpcMessage.RemoteProcedure]; ok {
@@ -132,10 +145,10 @@ type LookupResponse struct {
 	Contacts []Contact
 }
 
-func (network *Network) SendFindContactMessage(contact *Contact, target *KademliaID, reschan chan *LookupResponse) {
+func (network *Network) SendFindNodeMessage(contact *Contact, target *KademliaID, reschan chan *LookupResponse) {
 	// Build the message and send a request to the contact
 	messageID := network.NextID()
-	m := network.CreateRPCMessage(contact, messageID, "FindContact", 0, true)
+	m := network.CreateRPCMessage(contact, messageID, "FIND_NODE", 0, true)
 
 	// build using bytes.buffer
 	rpcData, err := proto.Marshal(m)
@@ -150,6 +163,7 @@ func (network *Network) SendFindContactMessage(contact *Contact, target *Kademli
 	var b bytes.Buffer
 	b.Write(header)
 	b.Write(rpcData)
+	// TODO write FindNodeRequest here also, maybe create internal function for everything above since it will be the same
 
 	network.SendUDPPacket(contact, b.Bytes())
 
@@ -183,7 +197,7 @@ func (network *Network) SendFindContactResponse(contact *Contact, messageId int3
 }
 */
 
-func (network *Network) SendFindDataMessage(hash string) {
+func (network *Network) SendFindValueMessage(hash string) {
 	// TODO
 }
 

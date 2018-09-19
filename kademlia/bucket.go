@@ -16,6 +16,7 @@ type bucket struct {
 func newBucket() *bucket {
 	bucket := &bucket{}
 	bucket.list = list.New()
+	bucket.rw = &sync.RWMutex{}
 	return bucket
 }
 

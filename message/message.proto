@@ -22,8 +22,12 @@ message SendDataMessage {
     bytes data = 1;
 }
 
-message SendContactListMessage {
-    repeated Contact contact = 1;
+message FindNodeRequest {
+    string TargetID = 1;
+}
+
+message FindNodeResponse {
+    repeated Contact contacts = 1;
 }
 
 message Contact {

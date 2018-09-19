@@ -1,9 +1,8 @@
 package kademlia
 
 import (
+	"log"
 	"time"
-
-	"github.com/ArmedGuy/kadfs/message"
 )
 
 type Kademlia struct {
@@ -14,20 +13,22 @@ type Kademlia struct {
 func NewKademliaState(me Contact, network KademliaNetwork) *Kademlia {
 	state := &Kademlia{}
 	state.RoutingTable = NewRoutingTable(me)
-	state.Network = &Network{
-		Me:            &me,
-		NextMessageID: 0,
-		Requests:      make(map[string]func(message.RPC, []byte)),
-		Responses:     make(map[int32]func(message.RPC, []byte)),
-	}
 	state.Network = network
+	network.SetState(state)
 	return state
 }
 
+const K = 20
 const alpha = 3
 
-func (kademlia *Kademlia) LookupContact(target *KademliaID) []Contact {
-	contacts := kademlia.RoutingTable.FindClosestContacts(target, 20)
+func (kademlia *Kademlia) Bootstrap(bootstrap *Contact) {
+	log.Printf("[INFO] kademlia: Bootstrapping with contact %v\n", bootstrap)
+	kademlia.RoutingTable.AddContact(*bootstrap)
+	kademlia.FindNode(kademlia.Network.GetLocalContact().ID)
+}
+
+func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
+	contacts := kademlia.RoutingTable.FindClosestContacts(target, K)
 	var candidates TemporaryLookupTable
 	// load the lookup table with target ID. Is used to sort table with closest first
 	candidates.LookupTarget = target
@@ -38,30 +39,35 @@ func (kademlia *Kademlia) LookupContact(target *KademliaID) []Contact {
 	changed := true
 	// hold closest node seen, from our local routing table
 	closest := candidates.GetAvailableContacts(1)[0].ID
+	log.Printf("closest: %v\n", closest)
 	for {
 		// get alpha new candidates to send to
 		sendto := candidates.GetNewCandidates(alpha)
 		if !changed {
+			log.Println("did not change")
 			if panic {
 				// panic already sent, return best list
 				return candidates.GetAvailableContacts(20)
 			}
 			// "panic send"
+			log.Println("sending panic")
 			panic = true
 			sendto = candidates.GetNewCandidates(20)
 		} else {
 			panic = false // reset panic if new closest found
 		}
 		closest = sendto[0].Contact.ID
+		log.Printf("new closest: %v\n", closest)
 		// create a shared channel for all our responses
 		reschan := make(chan *LookupResponse)
 		handled := len(sendto)
 		for _, candidate := range sendto {
 			// We update the lookup candidate to queried state.
 			// this means that it wont end up in GetNewCandidates queries
+			log.Printf("[DEBUG] kademlia: Sending message to %v\n", candidate.Contact)
 			candidate.Queried = true
 			//go kademlia.Network.SendFindNodeBlaBla(candidate.Contact, reschan)
-			go kademlia.Network.SendFindContactMessage(candidate.Contact, target, reschan)
+			go kademlia.Network.SendFindNodeMessage(candidate.Contact, target, reschan)
 		}
 		for handled > 0 {
 			// select response from channel or a timeout
@@ -74,10 +80,12 @@ func (kademlia *Kademlia) LookupContact(target *KademliaID) []Contact {
 						tmp = append(tmp, c)
 					}
 				}
+				log.Println("got response")
 				sendto = tmp
 				candidates.Append(response.Contacts)
 				break
 			case <-time.After(3 * time.Second):
+				log.Println("timeout of response")
 				break
 			}
 			handled--
@@ -89,11 +97,16 @@ func (kademlia *Kademlia) LookupContact(target *KademliaID) []Contact {
 		}
 		candidates.Sort()
 		// calculate if best candidates have changed or not
-		newClosest := candidates.GetAvailableContacts(1)[0].ID
+		newClosest := candidates.GetAvailableContacts(1)
+		if len(newClosest) == 0 {
+			log.Println("No available contacts!")
+			return newClosest
+		}
+		newClosestId := newClosest[0].ID
 		changed = false
-		if newClosest.CalcDistance(target).Less(closest.CalcDistance(target)) {
+		if newClosestId.CalcDistance(target).Less(closest.CalcDistance(target)) {
 			changed = true
-			closest = newClosest
+			closest = newClosestId
 		}
 	}
 }
