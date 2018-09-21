@@ -17,7 +17,7 @@ type Datastore interface {
 	Put(path string, data []byte)
 	Get(path string) []byte
 	Delete(path string)
-	GetKeysForRepublishing() map[*KademliaID][]byte
+	GetKeysForRepublishing() map[string]*File
 	DeleteExpiredData()
 }
 
