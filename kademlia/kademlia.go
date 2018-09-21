@@ -96,7 +96,6 @@ func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
 			handled--
 		}
 		// any node still in sendto list after all are handled are considered timed out
-		// this updates the node-global state which means that we might evict this contact from a bucket
 		for _, c := range sendto {
 			c.Contact.SetAvailable(false)
 		}
