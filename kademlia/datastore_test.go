@@ -15,13 +15,24 @@ func TestDatastore(t *testing.T) {
 	datastore.Put("/t/2", []byte{2, 2})
 	datastore.Put("/t/3", []byte{3, 3})
 
-	fmt.Printf("Files: %v\nExpire: %v\nReplicate: %v\n", datastore.files, datastore.expire, datastore.replicate)
+	fmt.Printf("Files: %v\n", datastore.files)
+
 	time.Sleep(5 * time.Second)
 
+	v := datastore.Get("/t/1")
+
+	fmt.Printf("get data: %v\n", *v)
+
+	time.Sleep(1 * time.Second)
+
 	datastore.Delete("/t/1")
-	fmt.Printf("Files: %v\nExpire: %v\nReplicate: %v\n", datastore.files, datastore.expire, datastore.replicate)
+	fmt.Printf("Files: %v\n", datastore.files)
 
 	x := datastore.GetKeysForRepublishing()
 
-	fmt.Printf("keys: %v", x)
+	fmt.Printf("Keys that needs to be republished: %v\n", x)
+
+	time.Sleep(5 * time.Second)
+	datastore.DeleteExpiredData()
+	fmt.Printf("Files left after expired deletion: %v\n", datastore.files)
 }
