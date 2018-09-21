@@ -12,7 +12,7 @@ type Kademlia struct {
 
 func NewKademliaState(me Contact, network KademliaNetwork) *Kademlia {
 	state := &Kademlia{}
-	state.RoutingTable = NewRoutingTable(me)
+	state.RoutingTable = NewRoutingTable(me, state)
 	state.Network = network
 	network.SetState(state)
 	return state
@@ -96,7 +96,6 @@ func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
 			handled--
 		}
 		// any node still in sendto list after all are handled are considered timed out
-		// this updates the node-global state which means that we might evict this contact from a bucket
 		for _, c := range sendto {
 			c.Contact.SetAvailable(false)
 		}
@@ -122,4 +121,15 @@ func (kademlia *Kademlia) LookupData(hash string) {
 
 func (kademlia *Kademlia) Store(data []byte) {
 	// TODO
+}
+
+func (kademlia *Kademlia) Ping(contact *Contact) bool {
+	reschan := make(chan bool)
+	go kademlia.Network.SendPingMessage(contact, reschan)
+	select {
+	case <-reschan:
+		return true
+	case <-time.After(1 * time.Second):
+		return false
+	}
 }

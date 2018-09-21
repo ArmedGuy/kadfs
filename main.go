@@ -18,6 +18,7 @@ func examineRoutingTable(state *kademlia.Kademlia) {
 	}
 	log.Println("----------------------------------------------------------------------------------")
 }
+
 func main() {
 
 	id := kademlia.NewRandomKademliaID()
@@ -49,7 +50,7 @@ func main() {
 		time.Sleep(1 * time.Second)
 		examineRoutingTable(state)
 		examineRoutingTable(state2)
-		state2.Bootstrap(&me3)
+		state3.Bootstrap(&me2)
 		time.Sleep(5 * time.Second)
 		examineRoutingTable(state)
 		examineRoutingTable(state2)

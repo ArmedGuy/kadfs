@@ -10,7 +10,7 @@ func (network *DummyNetwork) Listen() {
 func (network *DummyNetwork) SendPingMessage(contact *Contact) {
 
 }
-func (network *DummyNetwork) SendFindContactMessage(contact *Contact) {
+func (network *DummyNetwork) SendFindNodeMessage(contact *Contact, target *KademliaID, reschan chan *LookupResponse) {
 
 }
 func (network *DummyNetwork) SendFindDataMessage(hash string) {

@@ -14,7 +14,7 @@ import (
 type KademliaNetwork interface {
 	GetLocalContact() *Contact
 	Listen()
-	SendPingMessage(*Contact)
+	SendPingMessage(*Contact, chan bool)
 	SendFindNodeMessage(*Contact, *KademliaID, chan *LookupResponse)
 	SendFindValueMessage(string)
 	SendStoreMessage(string, []byte)
@@ -104,8 +104,18 @@ func (network *Network) SendUDPPacket(contact *Contact, data []byte) {
 	network.Conn.WriteToUDP(data, raddr)
 }
 
-func (network *Network) SendPingMessage(contact *Contact) {
-	// TODO
+func (network *Network) SendPingMessage(contact *Contact, reschan chan bool) {
+	rpc := network.NewRPC(contact, "PING")
+	messageID := rpc.GetMessageId()
+	network.Responses[messageID] = func(sender *Contact, rpc *RPCMessage) {
+		select {
+		case reschan <- true:
+			break
+		case <-time.After(5 * time.Second):
+			break
+		}
+	}
+	network.SendUDPPacket(contact, rpc.GetBytes())
 }
 
 type LookupResponse struct {
@@ -122,8 +132,6 @@ func (network *Network) SendFindNodeMessage(contact *Contact, target *KademliaID
 	payload.TargetID = target.String()
 
 	rpc.SetPayloadFromMessage(payload)
-
-	network.SendUDPPacket(contact, rpc.GetBytes())
 
 	// Register message response mapping for this unique message ID
 	network.Responses[messageID] = func(sender *Contact, rpc *RPCMessage) {
@@ -142,6 +150,7 @@ func (network *Network) SendFindNodeMessage(contact *Contact, target *KademliaID
 			break // nobody read our channel after 5 seconds, they must assumed we timed out
 		}
 	}
+	network.SendUDPPacket(contact, rpc.GetBytes())
 }
 
 func (network *Network) SendFindValueMessage(hash string) {
