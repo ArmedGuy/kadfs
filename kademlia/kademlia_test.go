@@ -68,12 +68,34 @@ func createKademliaNetwork(count int) *kademliatestnetwork {
 	return testnet
 }
 
-func TestKademliaLookup(t *testing.T) {
+func TestKademliaBootstrap(t *testing.T) {
 
 	testnet := createKademliaNetwork(20)
 	for k := range testnet.nodes {
 		log.Printf("node %v", testnet.nodes[k].Network.GetLocalContact())
 		examineRoutingTable(testnet.nodes[k])
 	}
+}
 
+func TestKademliaEviction(t *testing.T) {
+	// Create 20 nodes that all end up in same bucket
+	// disable oldest node (easiest is to overwrite response handler for PING)
+	// create 1 extra node and insert in routing table
+	// the oldest node should be evicted.
+}
+
+func TestKademliaNoEviction(t *testing.T) {
+	// create 20 nodes that all end up in the same bucket
+	// create 1 extra node and insert into routing table
+	// no change to bucket should be made
+}
+
+func TestKademliaFindNodePanic(t *testing.T) {
+	// Create enough nodes to trigger a panic during lookup
+	// Panic should find 1 extra node after panic is done
+}
+
+func TestKademliaFindNodeTimeouts(t *testing.T) {
+	// Create 20 nodes, and disable a few of them
+	// FindNode should only return (20 - disabled) nodes
 }
