@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"log"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/ArmedGuy/kadfs/message"
@@ -22,6 +23,18 @@ type KademliaNetwork interface {
 	SetState(*Kademlia)
 }
 
+type KademliaNetworkTransport interface {
+	SendRPCMessage(*Contact, *RPCMessage)
+}
+
+type UDPNetworkTransport struct {
+	network *Network
+}
+
+func (trans *UDPNetworkTransport) SendRPCMessage(to *Contact, rpc *RPCMessage) {
+	trans.network.SendUDPPacket(to, rpc.GetBytes())
+}
+
 type Network struct {
 	Me            *Contact
 	NextMessageID int32
@@ -29,6 +42,8 @@ type Network struct {
 	Requests      map[string]func(*Contact, *RPCMessage)
 	Responses     map[int32]func(*Contact, *RPCMessage)
 	kademlia      *Kademlia
+	Transport     KademliaNetworkTransport
+	lock          *sync.RWMutex
 }
 
 func NewNetwork(me *Contact) *Network {
@@ -37,7 +52,9 @@ func NewNetwork(me *Contact) *Network {
 		NextMessageID: 0,
 		Requests:      make(map[string]func(*Contact, *RPCMessage)),
 		Responses:     make(map[int32]func(*Contact, *RPCMessage)),
+		lock:          new(sync.RWMutex),
 	}
+	network.Transport = &UDPNetworkTransport{network: network}
 	network.registerMessageHandlers()
 	return network
 
@@ -79,9 +96,15 @@ func (network *Network) Listen() {
 					log.Printf("[WARNING] network: No request handler for %v\n", rpc.Header.RemoteProcedure)
 				}
 			} else {
+				network.lock.RLock()
 				if callback, ok := network.Responses[rpc.Header.MessageId]; ok {
 					go callback(&contact, rpc)
+					network.lock.RUnlock()
+					network.lock.Lock()
+					delete(network.Responses, rpc.Header.MessageId)
+					network.lock.Unlock()
 				} else {
+					network.lock.RUnlock()
 					log.Printf("[WARNING] network: No response handler for %v\n", rpc.Header.MessageId)
 				}
 			}
@@ -107,6 +130,7 @@ func (network *Network) SendUDPPacket(contact *Contact, data []byte) {
 func (network *Network) SendPingMessage(contact *Contact, reschan chan bool) {
 	rpc := network.NewRPC(contact, "PING")
 	messageID := rpc.GetMessageId()
+	network.lock.Lock()
 	network.Responses[messageID] = func(sender *Contact, rpc *RPCMessage) {
 		select {
 		case reschan <- true:
@@ -115,7 +139,8 @@ func (network *Network) SendPingMessage(contact *Contact, reschan chan bool) {
 			break
 		}
 	}
-	network.SendUDPPacket(contact, rpc.GetBytes())
+	network.lock.Unlock()
+	network.Transport.SendRPCMessage(contact, rpc)
 }
 
 type LookupResponse struct {
@@ -134,6 +159,7 @@ func (network *Network) SendFindNodeMessage(contact *Contact, target *KademliaID
 	rpc.SetPayloadFromMessage(payload)
 
 	// Register message response mapping for this unique message ID
+	network.lock.Lock()
 	network.Responses[messageID] = func(sender *Contact, rpc *RPCMessage) {
 		// deserialize data, turn into list of contacts, and add to result struct
 		// we then pass on result to result channel
@@ -150,7 +176,8 @@ func (network *Network) SendFindNodeMessage(contact *Contact, target *KademliaID
 			break // nobody read our channel after 5 seconds, they must assumed we timed out
 		}
 	}
-	network.SendUDPPacket(contact, rpc.GetBytes())
+	network.lock.Unlock()
+	network.Transport.SendRPCMessage(contact, rpc)
 }
 
 func (network *Network) SendFindValueMessage(hash string) {
