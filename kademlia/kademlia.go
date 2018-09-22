@@ -43,6 +43,7 @@ func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
 		sendto := candidates.GetNewCandidates(alpha)
 		// special case, cant send to anybody, just return what I got now
 		if len(sendto) == 0 {
+			log.Println("out of sendtos")
 			return candidates.GetAvailableContacts(K)
 		}
 		if !changed {

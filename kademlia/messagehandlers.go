@@ -22,7 +22,7 @@ func (network *Network) registerMessageHandlers() {
 		}
 		resRPC := rpc.GetResponse()
 		resRPC.SetPayloadFromMessage(res)
-		network.SendUDPPacket(sender, resRPC.GetBytes())
+		network.Transport.SendRPCMessage(sender, resRPC)
 	})
 
 	network.SetRequestHandler("FIND_VALUE", func(sender *Contact, rpc *RPCMessage) {
@@ -31,6 +31,6 @@ func (network *Network) registerMessageHandlers() {
 
 	network.SetRequestHandler("PING", func(sender *Contact, rpc *RPCMessage) {
 		res := rpc.GetResponse()
-		network.SendUDPPacket(sender, res.GetBytes())
+		network.Transport.SendRPCMessage(sender, res)
 	})
 }
