@@ -58,11 +58,18 @@ func main() {
 		examineRoutingTable(state2)
 		examineRoutingTable(state3)
 
-		// Try to find some value
+		fileToStore := []byte{1, 2, 3, 4, 5, 1, 3, 3, 7}
 		h1 := sha1.New()
 		h1.Write([]byte("some/file/path.exe"))
-		_, ok := state.FindValue(hex.EncodeToString(h1.Sum(nil)))
-		log.Printf("Found file returned %v\n", ok)
+
+		n := state2.Store(hex.EncodeToString(h1.Sum(nil)), fileToStore)
+		log.Printf("[LOG]: %v answered the store\n", n)
+
+		time.Sleep(5 * time.Second)
+
+		// Try to find some value
+		file, ok := state.FindValue(hex.EncodeToString(h1.Sum(nil)))
+		log.Printf("Found file returned %v. File content: %v\n", ok, file)
 	}()
 
 	fmt.Scanln()
