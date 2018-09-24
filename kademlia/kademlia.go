@@ -229,12 +229,29 @@ func (kademlia *Kademlia) FindValue(hash string) (*File, bool) { // Return File 
 	}
 }
 
-func (kademlia *Kademlia) Store(hash string, data []byte) {
+func (kademlia *Kademlia) Store(hash string, data []byte) int {
+	reschan := make(chan bool)
 	closest := kademlia.FindNode(NewKademliaID(hash))
 
 	for _, node := range closest {
-		go kademlia.Network.SendStoreMessage(&node, hash, data)
+		go kademlia.Network.SendStoreMessage(&node, hash, data, reschan)
 	}
+
+	clientsToHandle := len(closest)
+
+	responseAmount := 0
+
+	for clientsToHandle > 0 {
+		select {
+		case <-reschan:
+			responseAmount++
+		case <-time.After(5 * time.Second):
+			break
+		}
+		clientsToHandle--
+	}
+	return responseAmount
+
 }
 
 func (kademlia *Kademlia) Ping(contact *Contact) bool {

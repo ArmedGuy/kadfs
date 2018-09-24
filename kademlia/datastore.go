@@ -30,6 +30,7 @@ type File struct {
 	replicate time.Time
 	expire    time.Time
 	Data      *[]byte
+	isOG      bool
 }
 
 func NewInMemoryStore() *InMemoryStore {
@@ -49,7 +50,7 @@ func HashToKademliaID(hash string) *KademliaID {
 	return NewKademliaID(hash)
 }
 
-func (store *InMemoryStore) Put(hash string, data []byte) {
+func (store *InMemoryStore) Put(hash string, data []byte, isOriginal bool) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
@@ -57,6 +58,7 @@ func (store *InMemoryStore) Put(hash string, data []byte) {
 		Data:      &data,
 		replicate: time.Now().Add(tReplicate * time.Second),
 		expire:    time.Now().Add(tExpire * time.Second),
+		isOG:      isOriginal,
 	}
 }
 

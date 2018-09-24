@@ -18,7 +18,7 @@ type KademliaNetwork interface {
 	SendPingMessage(*Contact, chan bool)
 	SendFindNodeMessage(*Contact, *KademliaID, chan *LookupResponse)
 	SendFindValueMessage(*Contact, string, chan *FindValueResponse)
-	SendStoreMessage(*Contact, string, []byte)
+	SendStoreMessage(*Contact, string, []byte, chan bool)
 	SetRequestHandler(string, func(*Contact, *RPCMessage))
 	SetState(*Kademlia)
 }
@@ -237,14 +237,29 @@ func (network *Network) SendFindValueMessage(contact *Contact, hash string, resc
 	network.Transport.SendRPCMessage(contact, rpc)
 }
 
-func (network *Network) SendStoreMessage(contact *Contact, hash string, data []byte) {
+func (network *Network) SendStoreMessage(contact *Contact, hash string, data []byte, reschan chan bool) {
 	rpc := network.NewRPC(contact, "STORE")
 	messageID := rpc.GetMessageId()
 
-	p := new(message.SendDataMessage)
-	p.Data = data
+	payload := new(message.SendDataMessage)
+	payload.Data = data
+	payload.Hash = hash
 
-	payload := Proto.Marshal(p)
+	rpc.SetPayloadFromMessage(payload)
+
+	network.lock.Lock()
+	network.Responses[messageID] = func(sender *Contact, rpc *RPCMessage) {
+		select {
+		case reschan <- true:
+			break
+		case <-time.After(5 * time.Second):
+			break
+		}
+	}
+
+	// Unlock and send message
+	network.lock.Unlock()
+	network.Transport.SendRPCMessage(contact, rpc)
 
 }
 

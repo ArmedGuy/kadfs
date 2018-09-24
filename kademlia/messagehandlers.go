@@ -69,4 +69,14 @@ func (network *Network) registerMessageHandlers() {
 		res := rpc.GetResponse()
 		network.Transport.SendRPCMessage(sender, res)
 	})
+
+	network.SetRequestHandler("STORE", func(sender *Contact, rpc *RPCMessage) {
+		req := new(message.SendDataMessage)
+		rpc.GetMessageFromPayload(req)
+
+		network.kademlia.FileMemoryStore.Put(req.Hash, req.Data, false)
+
+		resRPC := rpc.GetResponse()
+		network.Transport.SendRPCMessage(sender, resRPC)
+	})
 }

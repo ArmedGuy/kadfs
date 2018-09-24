@@ -30,6 +30,7 @@ message FindValueResponse {
 
 message SendDataMessage {
     bytes Data = 1;
+    string Hash = 2;
 }
 
 message FindNodeRequest {
