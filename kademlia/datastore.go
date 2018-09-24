@@ -14,10 +14,10 @@ const tRepublish = 86400
 const tExpire = 86400
 
 type Datastore interface {
-	Put(path string, data []byte)
-	Get(path string) []byte
-	Delete(path string)
-	GetKeysForRepublishing() map[string]*File
+	Put(hash string, data []byte)
+	Get(hash string) []byte
+	Delete(hash string)
+	GetKeysForReplicate() map[string]*File
 	DeleteExpiredData()
 }
 
@@ -49,11 +49,9 @@ func HashToKademliaID(hash string) *KademliaID {
 	return NewKademliaID(hash)
 }
 
-func (store *InMemoryStore) Put(path string, data []byte) {
+func (store *InMemoryStore) Put(hash string, data []byte) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
-
-	hash := PathHash(path)
 
 	store.files[hash] = &File{
 		Data:      &data,
@@ -62,10 +60,9 @@ func (store *InMemoryStore) Put(path string, data []byte) {
 	}
 }
 
-func (store *InMemoryStore) Get(path string) (*[]byte, bool) {
+func (store *InMemoryStore) Get(hash string) (*[]byte, bool) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
-	hash := PathHash(path)
 
 	s := store.files
 	s1, ok := s[hash]
@@ -79,16 +76,15 @@ func (store *InMemoryStore) Get(path string) (*[]byte, bool) {
 	return file, true
 }
 
-func (store *InMemoryStore) Delete(path string) {
+func (store *InMemoryStore) Delete(hash string) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
-	hash := PathHash(path)
 	delete(store.files, hash)
 }
 
 // Do we need the data too or only the keys?
-func (store *InMemoryStore) GetKeysForRepublishing() map[string]*File {
+func (store *InMemoryStore) GetKeysForReplicate() map[string]*File {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 

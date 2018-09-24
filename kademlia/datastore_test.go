@@ -28,7 +28,7 @@ func TestDatastore(t *testing.T) {
 	datastore.Delete("/t/1")
 	fmt.Printf("Files: %v\n", datastore.files)
 
-	x := datastore.GetKeysForRepublishing()
+	x := datastore.GetKeysForReplicate()
 
 	fmt.Printf("Keys that needs to be republished: %v\n", x)
 

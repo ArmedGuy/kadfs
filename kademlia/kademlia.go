@@ -229,8 +229,12 @@ func (kademlia *Kademlia) FindValue(hash string) (*File, bool) { // Return File 
 	}
 }
 
-func (kademlia *Kademlia) Store(data []byte) {
-	// TODO
+func (kademlia *Kademlia) Store(hash string, data []byte) {
+	closest := kademlia.FindNode(NewKademliaID(hash))
+
+	for _, node := range closest {
+		go kademlia.Network.SendStoreMessage(&node, hash, data)
+	}
 }
 
 func (kademlia *Kademlia) Ping(contact *Contact) bool {
