@@ -76,7 +76,7 @@ func (network *Network) registerMessageHandlers() {
 		req := new(message.SendDataMessage)
 		rpc.GetMessageFromPayload(req)
 
-		log.Printf("[INFO]: Store file from request")
+		log.Printf("[INFO]: Stored file on node %v\n", network.kademlia.Network.GetLocalContact().ID)
 
 		network.kademlia.FileMemoryStore.Put(req.Hash, req.Data, false)
 

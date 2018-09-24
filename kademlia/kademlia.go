@@ -246,7 +246,8 @@ func (kademlia *Kademlia) Store(hash string, data []byte) int {
 
 	for _, node := range closest {
 		if node.ID != kademlia.Network.GetLocalContact().ID {
-			go kademlia.Network.SendStoreMessage(&node, hash, data, reschan)
+			n := node
+			go kademlia.Network.SendStoreMessage(&n, hash, data, reschan)
 		}
 	}
 
