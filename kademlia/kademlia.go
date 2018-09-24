@@ -118,7 +118,7 @@ func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
 	}
 }
 
-func (kademlia *Kademlia) FindValue(hash string) (*File, bool) { // Return File and a bool indicating error (file not found?)
+func (kademlia *Kademlia) FindValue(hash string) ([]byte, bool) { // Return File and a bool indicating error (file not found?)
 	// Variables needed for the FindFile procedure
 	panic := false
 	changed := true
@@ -183,7 +183,7 @@ func (kademlia *Kademlia) FindValue(hash string) (*File, bool) { // Return File 
 
 				// Did we get the file back?
 				if response.HasFile {
-					return &response.File, true // WIN WIN, WE FOUND THE FILE!!!!!!!!!!!!
+					return *response.File.Data, true // WIN WIN, WE FOUND THE FILE!!!!!!!!!!!!
 				} else {
 					// We did not get any file back...
 					// Append all contacts (exactly the same as in FindNode)
