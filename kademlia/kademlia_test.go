@@ -1,9 +1,12 @@
 package kademlia
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"testing"
+	"time"
 )
 
 type kademliatestnetwork struct {
@@ -98,4 +101,25 @@ func TestKademliaFindNodePanic(t *testing.T) {
 func TestKademliaFindNodeTimeouts(t *testing.T) {
 	// Create 20 nodes, and disable a few of them
 	// FindNode should only return (20 - disabled) nodes
+}
+
+func TestKademliaFindValue(t *testing.T) {
+	testnet := createKademliaNetwork(30)
+
+	// Create file to store
+	hash1 := sha1.New()
+	hash1.Write([]byte("some/file/path/file.ext"))
+	fileHashString := hex.EncodeToString(hash1.Sum(nil))
+	fileContent := []byte{1, 2, 3, 4, 5, 1, 3, 3, 7}
+
+	// Send store request to some node
+	//n := testnet[0]
+	//log.Printf("[LOG]: %v answered the store\n", n)
+
+	// Wait for propagation
+	time.Sleep(5 * time.Second)
+
+	// Try to find some value
+	//file, ok := state2.FindValue(hex.EncodeToString(h1.Sum(nil)))
+	//log.Printf("Found file returned %v. File content: %v\n", ok, file)
 }
