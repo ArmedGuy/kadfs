@@ -29,19 +29,24 @@ type InMemoryStore struct {
 type File struct {
 	replicate time.Time
 	expire    time.Time
-	data      *[]byte
+	Data      *[]byte
 }
 
-// Dno if this is needed or if we create all the stuff somewhere else
-func (store *InMemoryStore) Init() {
-	store.files = make(map[string]*File)
-	store.mutex = &sync.Mutex{}
+func NewInMemoryStore() *InMemoryStore {
+	inMemoryStore := &InMemoryStore{}
+	inMemoryStore.files = make(map[string]*File)
+	inMemoryStore.mutex = &sync.Mutex{}
+	return inMemoryStore
 }
 
 func PathHash(path string) string {
 	h := sha1.New()
 	h.Write([]byte(path))
 	return NewKademliaID(hex.EncodeToString(h.Sum(nil))).String()
+}
+
+func HashToKademliaID(hash string) *KademliaID {
+	return NewKademliaID(hash)
 }
 
 func (store *InMemoryStore) Put(path string, data []byte) {
@@ -51,23 +56,27 @@ func (store *InMemoryStore) Put(path string, data []byte) {
 	hash := PathHash(path)
 
 	store.files[hash] = &File{
-		data:      &data,
+		Data:      &data,
 		replicate: time.Now().Add(tReplicate * time.Second),
 		expire:    time.Now().Add(tExpire * time.Second),
 	}
-
 }
 
-func (store *InMemoryStore) Get(path string) *[]byte {
+func (store *InMemoryStore) Get(path string) (*[]byte, bool) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 	hash := PathHash(path)
 
 	s := store.files
-	s1 := s[hash]
-	file := s1.data
+	s1, ok := s[hash]
 
-	return file
+	// No file found, return errrrrr
+	if !ok {
+		return nil, false
+	}
+
+	file := s1.Data
+	return file, true
 }
 
 func (store *InMemoryStore) Delete(path string) {

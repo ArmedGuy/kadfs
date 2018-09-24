@@ -14,8 +14,18 @@ message RPC {
     string SenderAddress = 7;
 }
 
-message FindDataMessage {
-    string hash = 1;
+message FindValueRequest {
+    string Hash = 1;
+}
+
+//
+// A FindValueResponse can either have the file or K number of contacts.
+// This is indicated by the hasData flag
+//
+message FindValueResponse {
+    bool HasData = 1;
+    bytes Data = 2;
+    repeated Contact Contacts = 3;
 }
 
 message SendDataMessage {

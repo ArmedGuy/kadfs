@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"time"
@@ -55,6 +57,11 @@ func main() {
 		examineRoutingTable(state)
 		examineRoutingTable(state2)
 		examineRoutingTable(state3)
+
+		// Try to find some value
+		h1 := sha1.New()
+		h1.Write([]byte("some/file/path.exe"))
+		state.FindValue(hex.EncodeToString(h1.Sum(nil)))
 	}()
 
 	fmt.Scanln()
