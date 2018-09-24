@@ -1,6 +1,8 @@
 package kademlia
 
 import (
+	"log"
+
 	"github.com/ArmedGuy/kadfs/message"
 )
 
@@ -73,6 +75,8 @@ func (network *Network) registerMessageHandlers() {
 	network.SetRequestHandler("STORE", func(sender *Contact, rpc *RPCMessage) {
 		req := new(message.SendDataMessage)
 		rpc.GetMessageFromPayload(req)
+
+		log.Printf("[INFO]: Store file from request")
 
 		network.kademlia.FileMemoryStore.Put(req.Hash, req.Data, false)
 

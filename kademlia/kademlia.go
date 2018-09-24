@@ -233,8 +233,12 @@ func (kademlia *Kademlia) Store(hash string, data []byte) int {
 	reschan := make(chan bool)
 	closest := kademlia.FindNode(NewKademliaID(hash))
 
+	kademlia.FileMemoryStore.Put(hash, data, true)
+
 	for _, node := range closest {
-		go kademlia.Network.SendStoreMessage(&node, hash, data, reschan)
+		if node.ID != kademlia.Network.GetLocalContact().ID {
+			go kademlia.Network.SendStoreMessage(&node, hash, data, reschan)
+		}
 	}
 
 	clientsToHandle := len(closest)
