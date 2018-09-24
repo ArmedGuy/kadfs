@@ -17,7 +17,8 @@ type Datastore interface {
 	Put(hash string, data []byte)
 	Get(hash string) []byte
 	Delete(hash string)
-	GetKeysForReplicate() map[string]*File
+	GetKeysForReplicate() []string
+	GetKeysAndValueForRepublish() map[string]*File
 	DeleteExpiredData()
 }
 
@@ -29,6 +30,7 @@ type InMemoryStore struct {
 type File struct {
 	replicate time.Time
 	expire    time.Time
+	republish time.Time
 	Data      *[]byte
 	isOG      bool
 }
@@ -56,6 +58,7 @@ func (store *InMemoryStore) Put(hash string, data []byte, isOriginal bool) {
 
 	store.files[hash] = &File{
 		Data:      &data,
+		republish: time.Now().Add(tRepublish * time.Second),
 		replicate: time.Now().Add(tReplicate * time.Second),
 		expire:    time.Now().Add(tExpire * time.Second),
 		isOG:      isOriginal,
@@ -85,14 +88,27 @@ func (store *InMemoryStore) Delete(hash string) {
 	delete(store.files, hash)
 }
 
-// Do we need the data too or only the keys?
-func (store *InMemoryStore) GetKeysForReplicate() map[string]*File {
+func (store *InMemoryStore) GetKeysForReplicate() []string {
+	store.mutex.Lock()
+	defer store.mutex.Unlock()
+
+	temp := make([]string, 0)
+	for key, value := range store.files {
+		if time.Now().After(value.replicate) && !value.isOG {
+			_ = append(temp, key)
+		}
+	}
+
+	return temp
+}
+
+func (store *InMemoryStore) GetKeysAndValueForRepublish() map[string]*File {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
 	temp := make(map[string]*File)
 	for key, value := range store.files {
-		if time.Now().After(value.replicate) {
+		if time.Now().After(value.republish) && value.isOG {
 			temp[key] = store.files[key]
 		}
 	}
