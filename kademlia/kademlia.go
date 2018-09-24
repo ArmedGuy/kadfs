@@ -278,3 +278,38 @@ func (kademlia *Kademlia) Ping(contact *Contact) bool {
 		return false
 	}
 }
+
+func (kademlia *Kademlia) Republish() {
+	m := kademlia.FileMemoryStore.GetKeysAndValueForRepublish()
+
+	for key, value := range m {
+		_ = kademlia.Store(key, *value.Data)
+	}
+}
+
+func (kademlia *Kademlia) Replicate() {
+	keys := kademlia.FileMemoryStore.GetKeysForReplicate()
+
+	for _, key := range keys {
+		closest := kademlia.FindNode(NewKademliaID(key))
+
+		iAmInClosest := false
+		for _, contact := range closest {
+			if kademlia.Network.GetLocalContact().ID.Equals(contact.ID) {
+				iAmInClosest = true
+			}
+		}
+
+		if iAmInClosest {
+			// update time
+			kademlia.FileMemoryStore.UpdateReplicateTime(key)
+		} else {
+			kademlia.FileMemoryStore.Delete(key)
+		}
+
+	}
+}
+
+func (kademlia *Kademlia) Expire() {
+	kademlia.FileMemoryStore.DeleteExpiredData()
+}

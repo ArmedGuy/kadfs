@@ -121,8 +121,15 @@ func (store *InMemoryStore) DeleteExpiredData() {
 	defer store.mutex.Unlock()
 
 	for key, value := range store.files {
-		if time.Now().After(value.expire) {
+		if time.Now().After(value.expire) && !value.isOG {
 			delete(store.files, key)
 		}
 	}
+}
+
+func (store *InMemoryStore) UpdateReplicateTime(hash string) {
+	store.mutex.Lock()
+	defer store.mutex.Unlock()
+
+	store.files[hash].replicate = time.Now().Add(tReplicate * time.Second)
 }
