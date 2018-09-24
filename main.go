@@ -62,7 +62,7 @@ func main() {
 		h1 := sha1.New()
 		h1.Write([]byte("some/file/path.exe"))
 
-		n := state.Store(hex.EncodeToString(h1.Sum(nil)), fileToStore)
+		n := state2.Store(hex.EncodeToString(h1.Sum(nil)), fileToStore)
 		log.Printf("[LOG]: %v answered the store\n", n)
 
 		time.Sleep(10 * time.Second)
