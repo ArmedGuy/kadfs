@@ -19,7 +19,7 @@ message FindDataMessage {
 }
 
 message SendDataMessage {
-    bytes data = 1;
+    bytes Data = 1;
 }
 
 message FindNodeRequest {
