@@ -119,6 +119,15 @@ func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
 }
 
 func (kademlia *Kademlia) FindValue(hash string) ([]byte, bool) { // Return File and a bool indicating error (file not found?)
+	// Before we do anything, we check if we have the file
+	log.Printf("[INFO] Kademlia FindValue: Searching for file in local storage\n")
+	file, ok := kademlia.FileMemoryStore.Get(hash)
+	log.Printf("[INFO] Kademlia FindValue: Local file status: %v, File: %v\n", ok, file)
+
+	if ok {
+		return *file, true
+	}
+
 	// Variables needed for the FindFile procedure
 	panic := false
 	changed := true
