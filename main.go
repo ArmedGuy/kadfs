@@ -65,10 +65,10 @@ func main() {
 		n := state.Store(hex.EncodeToString(h1.Sum(nil)), fileToStore)
 		log.Printf("[LOG]: %v answered the store\n", n)
 
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
 
 		// Try to find some value
-		file, ok := state.FindValue(hex.EncodeToString(h1.Sum(nil)))
+		file, ok := state2.FindValue(hex.EncodeToString(h1.Sum(nil)))
 		log.Printf("Found file returned %v. File content: %v\n", ok, file)
 	}()
 
