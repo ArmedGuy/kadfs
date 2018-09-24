@@ -138,24 +138,24 @@ func (kademlia *Kademlia) FindValue(hash string) (*File, bool) { // Return File 
 
 		// No contacts available
 		if len(sendTo) == 0 {
-			log.Println("[INFO] kademlia: Found no contacts to send FindValue request to")
+			log.Println("[INFO] kademlia FindValue: Found no contacts to send FindValue request to")
 
 			// RETURN: What should be returned if no file is found?
-			return nil, true
+			return nil, false
 		}
 
 		if !changed {
-			log.Println("[INFO] kademlia: Could not find any closer nodes to the file")
+			log.Println("[INFO] kademlia FindValue: Could not find any closer nodes to the file")
 			if panic {
-				log.Println("[INFO] kademlia: Found no contacts to send FindValue request to")
+				log.Println("[INFO] kademlia FindValue: Found no contacts to send FindValue request to")
 				// Panic already sent
 
 				// RETURN: What should be returned if no file is found?
-				return nil, true
+				return nil, false
 			}
 
 			// Set panic
-			log.Println("[INFO] kademlia: PANIC set")
+			log.Println("[INFO] kademlia FindValue: PANIC set")
 			panic = true
 			sendTo = candidates.GetNewCandidates(K)
 		} else {
@@ -163,7 +163,7 @@ func (kademlia *Kademlia) FindValue(hash string) (*File, bool) { // Return File 
 		}
 
 		closestNode := sendTo[0].Contact.ID
-		log.Printf("[INFO] kademlia: Closest node is %v\n", closestNode)
+		log.Printf("[INFO] kademlia FindValue: Closest node is %v\n", closestNode)
 
 		// Create a shared channel for responses
 		responseChannel := make(chan *FindValueResponse)
@@ -171,7 +171,7 @@ func (kademlia *Kademlia) FindValue(hash string) (*File, bool) { // Return File 
 
 		// Query each candidate and update client query state
 		for _, candidate := range sendTo {
-			log.Printf("[INFO] kademlia: Sending message to %v\n", candidate.Contact)
+			log.Printf("[INFO] kademlia FindValue: Sending message to %v\n", candidate.Contact)
 			candidate.Queried = true
 			go kademlia.Network.SendFindValueMessage(candidate.Contact, hash, responseChannel)
 		}
@@ -183,7 +183,7 @@ func (kademlia *Kademlia) FindValue(hash string) (*File, bool) { // Return File 
 
 				// Did we get the file back?
 				if response.HasFile {
-					return &response.File, false // WIN WIN, WE FOUND THE FILE!!!!!!!!!!!!
+					return &response.File, true // WIN WIN, WE FOUND THE FILE!!!!!!!!!!!!
 				} else {
 					// We did not get any file back...
 					// Append all contacts (exactly the same as in FindNode)
@@ -193,16 +193,16 @@ func (kademlia *Kademlia) FindValue(hash string) (*File, bool) { // Return File 
 							tmp = append(tmp, c)
 						}
 					}
-					log.Println("got response")
+					log.Println("[INFO] Kademlia FindValue: got response")
 					for _, c := range response.Contacts {
-						log.Printf("got contact %v\n", c)
+						log.Printf("[INFO] Kademlia FindValue: FindValuegot contact %v\n", c)
 					}
 					sendTo = tmp
 					candidates.Append(response.Contacts)
 					break
 				}
 			case <-time.After(3 * time.Second):
-				log.Println("timeout of response")
+				log.Println("[INFO] Kademlia FindValue: timeout of response")
 				break
 			}
 			clientsToHandle--
@@ -218,7 +218,7 @@ func (kademlia *Kademlia) FindValue(hash string) (*File, bool) { // Return File 
 		// calculate if best candidates have changed or not
 		newClosest := candidates.GetAvailableContacts(1)
 		if len(newClosest) == 0 {
-			return nil, true // No available contacts left...
+			return nil, false // No available contacts left...
 		}
 		newClosestID := newClosest[0].ID
 		changed = false

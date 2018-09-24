@@ -34,10 +34,10 @@ func (network *Network) registerMessageHandlers() {
 		rpc.GetMessageFromPayload(req)
 
 		// First, check if we have the file
-		file, err := network.kademlia.FileMemoryStore.Get(req.Hash)
+		file, ok := network.kademlia.FileMemoryStore.Get(req.Hash)
 
 		// Buuh, we do not have the file, respond wiht K closest nodes to file
-		if err {
+		if !ok {
 
 			key := NewKademliaID(req.Hash)
 			contacts := network.kademlia.RoutingTable.FindClosestContacts(key, K)

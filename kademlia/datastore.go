@@ -68,15 +68,15 @@ func (store *InMemoryStore) Get(path string) (*[]byte, bool) {
 	hash := PathHash(path)
 
 	s := store.files
-	s1, err := s[hash]
+	s1, ok := s[hash]
 
 	// No file found, return errrrrr
-	if err {
-		return nil, err
+	if !ok {
+		return nil, false
 	}
 
 	file := s1.Data
-	return file, false
+	return file, true
 }
 
 func (store *InMemoryStore) Delete(path string) {
