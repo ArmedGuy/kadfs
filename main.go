@@ -61,7 +61,8 @@ func main() {
 		// Try to find some value
 		h1 := sha1.New()
 		h1.Write([]byte("some/file/path.exe"))
-		state.FindValue(hex.EncodeToString(h1.Sum(nil)))
+		_, ok := state.FindValue(hex.EncodeToString(h1.Sum(nil)))
+		log.Printf("Found file returned %v\n", ok)
 	}()
 
 	fmt.Scanln()
