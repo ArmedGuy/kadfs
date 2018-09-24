@@ -14,10 +14,11 @@ const tRepublish = 86400
 const tExpire = 86400
 
 type Datastore interface {
-	Put(path string, data []byte)
-	Get(path string) []byte
-	Delete(path string)
-	GetKeysForRepublishing() map[string]*File
+	Put(hash string, data []byte)
+	Get(hash string) []byte
+	Delete(hash string)
+	GetKeysForReplicate() []string
+	GetKeysAndValueForRepublish() map[string]*File
 	DeleteExpiredData()
 }
 
@@ -29,13 +30,16 @@ type InMemoryStore struct {
 type File struct {
 	replicate time.Time
 	expire    time.Time
-	data      *[]byte
+	republish time.Time
+	Data      *[]byte
+	isOG      bool
 }
 
-// Dno if this is needed or if we create all the stuff somewhere else
-func (store *InMemoryStore) Init() {
-	store.files = make(map[string]*File)
-	store.mutex = &sync.Mutex{}
+func NewInMemoryStore() *InMemoryStore {
+	inMemoryStore := &InMemoryStore{}
+	inMemoryStore.files = make(map[string]*File)
+	inMemoryStore.mutex = &sync.Mutex{}
+	return inMemoryStore
 }
 
 func PathHash(path string) string {
@@ -44,48 +48,67 @@ func PathHash(path string) string {
 	return NewKademliaID(hex.EncodeToString(h.Sum(nil))).String()
 }
 
-func (store *InMemoryStore) Put(path string, data []byte) {
+func HashToKademliaID(hash string) *KademliaID {
+	return NewKademliaID(hash)
+}
+
+func (store *InMemoryStore) Put(hash string, data []byte, isOriginal bool) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
-
-	hash := PathHash(path)
 
 	store.files[hash] = &File{
-		data:      &data,
+		Data:      &data,
+		republish: time.Now().Add(tRepublish * time.Second),
 		replicate: time.Now().Add(tReplicate * time.Second),
 		expire:    time.Now().Add(tExpire * time.Second),
+		isOG:      isOriginal,
 	}
-
 }
 
-func (store *InMemoryStore) Get(path string) *[]byte {
+func (store *InMemoryStore) Get(hash string) (*[]byte, bool) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
-	hash := PathHash(path)
 
 	s := store.files
-	s1 := s[hash]
-	file := s1.data
+	s1, ok := s[hash]
 
-	return file
+	// No file found, return errrrrr
+	if !ok {
+		return nil, false
+	}
+
+	file := s1.Data
+	return file, true
 }
 
-func (store *InMemoryStore) Delete(path string) {
+func (store *InMemoryStore) Delete(hash string) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
-	hash := PathHash(path)
 	delete(store.files, hash)
 }
 
-// Do we need the data too or only the keys?
-func (store *InMemoryStore) GetKeysForRepublishing() map[string]*File {
+func (store *InMemoryStore) GetKeysForReplicate() []string {
+	store.mutex.Lock()
+	defer store.mutex.Unlock()
+
+	temp := make([]string, 0)
+	for key, value := range store.files {
+		if time.Now().After(value.replicate) && !value.isOG {
+			_ = append(temp, key)
+		}
+	}
+
+	return temp
+}
+
+func (store *InMemoryStore) GetKeysAndValueForRepublish() map[string]*File {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
 	temp := make(map[string]*File)
 	for key, value := range store.files {
-		if time.Now().After(value.replicate) {
+		if time.Now().After(value.republish) && value.isOG {
 			temp[key] = store.files[key]
 		}
 	}
