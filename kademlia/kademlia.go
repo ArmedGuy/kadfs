@@ -6,8 +6,9 @@ import (
 )
 
 type Kademlia struct {
-	RoutingTable *RoutingTable
-	Network      KademliaNetwork
+	RoutingTable    *RoutingTable
+	Network         KademliaNetwork
+	FileMemoryStore *InMemoryStore
 }
 
 func NewKademliaState(me Contact, network KademliaNetwork) *Kademlia {
@@ -15,6 +16,7 @@ func NewKademliaState(me Contact, network KademliaNetwork) *Kademlia {
 	state.RoutingTable = NewRoutingTable(me, state)
 	state.Network = network
 	network.SetState(state)
+	state.FileMemoryStore = NewInMemoryStore()
 	return state
 }
 
@@ -116,8 +118,115 @@ func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
 	}
 }
 
-func (kademlia *Kademlia) LookupData(hash string) {
-	// TODO
+func (kademlia *Kademlia) FindValue(hash string) (*File, bool) { // Return File and a bool indicating error (file not found?)
+	// Variables needed for the FindFile procedure
+	panic := false
+	changed := true
+
+	// We start by converting the hashed file path to an kademlia ID
+	key := HashToKademliaID(hash)
+
+	// Get our K closest nodes to this key
+	contacts := kademlia.RoutingTable.FindClosestContacts(key, K)
+	candidates := NewTemporaryLookupTable(kademlia.Network.GetLocalContact(), key) // Append myself into this table
+	candidates.Append(contacts)
+	candidates.Sort()
+
+	for {
+		// Get alpha number of clients to send FIND_VALUE request to
+		sendTo := candidates.GetNewCandidates(alpha)
+
+		// No contacts available
+		if len(sendTo) == 0 {
+			log.Println("[INFO] kademlia FindValue: Found no contacts to send FindValue request to")
+
+			// RETURN: What should be returned if no file is found?
+			return nil, false
+		}
+
+		if !changed {
+			log.Println("[INFO] kademlia FindValue: Could not find any closer nodes to the file")
+			if panic {
+				log.Println("[INFO] kademlia FindValue: Found no contacts to send FindValue request to")
+				// Panic already sent
+
+				// RETURN: What should be returned if no file is found?
+				return nil, false
+			}
+
+			// Set panic
+			log.Println("[INFO] kademlia FindValue: PANIC set")
+			panic = true
+			sendTo = candidates.GetNewCandidates(K)
+		} else {
+			panic = false // Closest contact changed, do not panic
+		}
+
+		closestNode := sendTo[0].Contact.ID
+		log.Printf("[INFO] kademlia FindValue: Closest node is %v\n", closestNode)
+
+		// Create a shared channel for responses
+		responseChannel := make(chan *FindValueResponse)
+		clientsToHandle := len(sendTo)
+
+		// Query each candidate and update client query state
+		for _, candidate := range sendTo {
+			log.Printf("[INFO] kademlia FindValue: Sending message to %v\n", candidate.Contact)
+			candidate.Queried = true
+			go kademlia.Network.SendFindValueMessage(candidate.Contact, hash, responseChannel)
+		}
+
+		// Handle every client
+		for clientsToHandle > 0 {
+			select {
+			case response := <-responseChannel: // got a response, remove responder from sendTo list
+
+				// Did we get the file back?
+				if response.HasFile {
+					return &response.File, true // WIN WIN, WE FOUND THE FILE!!!!!!!!!!!!
+				} else {
+					// We did not get any file back...
+					// Append all contacts (exactly the same as in FindNode)
+					tmp := sendTo[:0]
+					for _, c := range sendTo {
+						if !c.Contact.ID.Equals(response.From.ID) {
+							tmp = append(tmp, c)
+						}
+					}
+					log.Println("[INFO] Kademlia FindValue: got response")
+					for _, c := range response.Contacts {
+						log.Printf("[INFO] Kademlia FindValue: FindValuegot contact %v\n", c)
+					}
+					sendTo = tmp
+					candidates.Append(response.Contacts)
+					break
+				}
+			case <-time.After(3 * time.Second):
+				log.Println("[INFO] Kademlia FindValue: timeout of response")
+				break
+			}
+			clientsToHandle--
+		}
+
+		// All nodes still in the sendTo list have timed out
+		for _, c := range sendTo {
+			c.Contact.SetAvailable(false)
+		}
+
+		candidates.Sort()
+
+		// calculate if best candidates have changed or not
+		newClosest := candidates.GetAvailableContacts(1)
+		if len(newClosest) == 0 {
+			return nil, false // No available contacts left...
+		}
+		newClosestID := newClosest[0].ID
+		changed = false
+		if newClosestID.CalcDistance(key).Less(closestNode.CalcDistance(key)) {
+			changed = true
+			closestNode = newClosestID
+		}
+	}
 }
 
 func (kademlia *Kademlia) Store(data []byte) {
