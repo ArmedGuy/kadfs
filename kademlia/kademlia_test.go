@@ -10,7 +10,15 @@ import (
 )
 
 type kademliatestnetwork struct {
-	nodes map[string]*Kademlia
+	origin   *Kademlia
+	nodelist []*Kademlia
+	nodes    map[string]*Kademlia
+}
+
+func (global *kademliatestnetwork) addToNetwork(node *Kademlia) {
+	global.nodelist = append(global.nodelist, node)
+	global.nodes[node.Network.GetLocalContact().ID.String()] = node
+
 }
 
 type InternalRoutingTransport struct {
@@ -21,21 +29,26 @@ type InternalRoutingTransport struct {
 func (trans *InternalRoutingTransport) SendRPCMessage(to *Contact, rpc *RPCMessage) {
 	otherstate, ok := trans.global.nodes[rpc.Header.ReceiverId]
 	if !ok {
-		log.Printf("[ERROR] InternalRoutingTransport: No node in network matching ID")
+		log.Printf("[ERROR] InternalRoutingTransport: No node in network matching ID %v", rpc.Header.ReceiverId)
 		return
 	}
 	othernetwork, ok := otherstate.Network.(*Network)
 	if !ok {
 		log.Printf("[ERROR]: Other network broken, cannot do internal message routing")
 	}
-	otherstate.RoutingTable.AddContact(*trans.From)
+	go otherstate.RoutingTable.AddContact(*trans.From)
 	if rpc.Header.Request {
 		callback, _ := othernetwork.Requests[rpc.Header.RemoteProcedure]
-		callback(trans.From, rpc)
+		go callback(trans.From, rpc)
 	} else {
-		callback, _ := othernetwork.Responses[rpc.Header.MessageId]
-		callback(trans.From, rpc)
-		delete(othernetwork.Responses, rpc.Header.MessageId)
+		log.Println("Sending response")
+
+		if callback, ok := othernetwork.GetResponseHandler(rpc.Header.MessageId); ok {
+			go callback(trans.From, rpc)
+		} else {
+			log.Println("No response found")
+		}
+		log.Println("Sent response")
 	}
 }
 
@@ -49,8 +62,25 @@ func examineRoutingTable(state *Kademlia) {
 	log.Println("----------------------------------------------------------------------------------")
 }
 
-func createKademliaNode(offset int, global *kademliatestnetwork) *Kademlia {
-	id := NewRandomKademliaID()
+var nextID byte = 0
+
+func contactInList(contact *Contact, contacts []Contact) bool {
+	for _, c := range contacts {
+		if c.ID.Equals(contact.ID) {
+			return true
+		}
+	}
+	return false
+}
+
+func nextKademliaID() *KademliaID {
+	defer func() { nextID++ }()
+	str := fmt.Sprintf("000000000000000000000000000F0000000000%02X", nextID)
+
+	return NewKademliaID(str)
+}
+
+func createKademliaNode(id *KademliaID, offset int, global *kademliatestnetwork) *Kademlia {
 	me := NewContact(id, fmt.Sprintf("localhost:%v", 8000+offset))
 	network := NewNetwork(&me)
 	// Set internal transport solution so we dont need UDP ports
@@ -58,14 +88,28 @@ func createKademliaNode(offset int, global *kademliatestnetwork) *Kademlia {
 	return NewKademliaState(me, network)
 }
 
-func createKademliaNetwork(count int) *kademliatestnetwork {
+func createKademliaNetwork(count int, spread bool) *kademliatestnetwork {
 	testnet := new(kademliatestnetwork)
 	testnet.nodes = make(map[string]*Kademlia)
-	node1 := createKademliaNode(0, testnet)
-	testnet.nodes[node1.Network.GetLocalContact().ID.String()] = node1
+	var id1 *KademliaID
+	if spread {
+		id1 = NewRandomKademliaID()
+	} else {
+		id1 = NewKademliaID("0000000000000000000000000000000000000000")
+	}
+	node1 := createKademliaNode(id1, 0, testnet)
+	testnet.origin = node1
+	testnet.addToNetwork(node1)
 	for i := 1; i < count; i++ {
-		node := createKademliaNode(i, testnet)
-		testnet.nodes[node.Network.GetLocalContact().ID.String()] = node
+		var id *KademliaID
+		if spread {
+			id = NewRandomKademliaID()
+		} else {
+			id = nextKademliaID()
+		}
+		node := createKademliaNode(id, i, testnet)
+		testnet.addToNetwork(node)
+		log.Printf("[DEBUG] kademlia_test: Bootstrapping node %v", node.Network.GetLocalContact().ID.String())
 		node.Bootstrap(node1.Network.GetLocalContact())
 	}
 	return testnet
@@ -73,24 +117,71 @@ func createKademliaNetwork(count int) *kademliatestnetwork {
 
 func TestKademliaBootstrap(t *testing.T) {
 
-	testnet := createKademliaNetwork(20)
-	for k := range testnet.nodes {
-		log.Printf("node %v", testnet.nodes[k].Network.GetLocalContact())
-		examineRoutingTable(testnet.nodes[k])
+	// Create network with 21 nodes (1 node has 20 contacts)
+	testnet := createKademliaNetwork(21, false)
+	for _, n := range testnet.nodelist {
+		log.Printf("node %v", n.Network.GetLocalContact())
+		examineRoutingTable(n)
 	}
 }
 
 func TestKademliaEviction(t *testing.T) {
-	// Create 20 nodes that all end up in same bucket
-	// disable oldest node (easiest is to overwrite response handler for PING)
+	// Create 21 nodes that all end up in same bucket (1 node knows 20 other nodes, which is max bucket size)
+	// disable all nodes (easiest is to overwrite response handler for PING)
 	// create 1 extra node and insert in routing table
-	// the oldest node should be evicted.
+	// the oldest node should be evicted. (not checked yet)
+
+	nodes := 21
+
+	testnet := createKademliaNetwork(nodes, false)
+	pinged := false
+	for i := 1; i < nodes; i++ {
+		testnet.nodelist[i].Network.SetRequestHandler("PING", func(sender *Contact, rpc *RPCMessage) {
+			// Attempting to ping me
+			log.Print("Attempting to ping downed node")
+			pinged = true
+		})
+	}
+
+	time.Sleep(1 * time.Second)
+	addmeid := nextKademliaID()
+	addme := createKademliaNode(addmeid, 50, testnet)
+	testnet.addToNetwork(addme)
+	addme.Bootstrap(testnet.origin.Network.GetLocalContact())
+	time.Sleep(10 * time.Second)
+
+	closest := testnet.origin.RoutingTable.FindClosestContacts(testnet.origin.Network.GetLocalContact().ID, 30)
+	if !pinged {
+		log.Fatal("No pings were sent in eviction case!")
+	}
+	if !contactInList(addme.Network.GetLocalContact(), closest) {
+		log.Fatal("Not in closest 30 contacts! Should be in a bucket")
+	}
+
 }
 
 func TestKademliaNoEviction(t *testing.T) {
-	// create 20 nodes that all end up in the same bucket
-	// create 1 extra node and insert into routing table
-	// no change to bucket should be made
+	// Create 21 nodes that all end up in same bucket (1 node knows 20 other nodes, which is max bucket size)
+	// Dont disable any nodes
+	// create 1 extra node and insert in routing table
+	// New node should not exist in bucket
+
+	nodes := 21
+
+	testnet := createKademliaNetwork(nodes, false)
+
+	time.Sleep(1 * time.Second)
+	addmeid := nextKademliaID()
+	addme := createKademliaNode(addmeid, 50, testnet)
+	testnet.addToNetwork(addme)
+	addme.Bootstrap(testnet.origin.Network.GetLocalContact())
+	time.Sleep(10 * time.Second)
+
+	closest := testnet.origin.RoutingTable.FindClosestContacts(testnet.origin.Network.GetLocalContact().ID, 30)
+	if contactInList(addme.Network.GetLocalContact(), closest) {
+		log.Fatal("In closest 30 contacts! Should not be in buckets")
+	}
+
 }
 
 func TestKademliaFindNodePanic(t *testing.T) {

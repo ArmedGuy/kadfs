@@ -86,9 +86,6 @@ func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
 					}
 				}
 				log.Println("got response")
-				for _, c := range response.Contacts {
-					log.Printf("got contact %v\n", c)
-				}
 				sendto = tmp
 				candidates.Append(response.Contacts)
 				break

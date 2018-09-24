@@ -72,6 +72,15 @@ func (network *Network) SetRequestHandler(rpc string, fn func(*Contact, *RPCMess
 	network.Requests[rpc] = fn
 }
 
+func (network *Network) GetResponseHandler(messageID int32) (func(*Contact, *RPCMessage), bool) {
+
+	network.lock.Lock()
+	defer network.lock.Unlock()
+	res, ok := network.Responses[messageID]
+	delete(network.Responses, messageID)
+	return res, ok
+}
+
 func (network *Network) Listen() {
 	log.Println("[INFO] kademlia: Listening, accepting RPCs on", network.Me.Address)
 	addr, _ := net.ResolveUDPAddr("udp", network.Me.Address)
@@ -96,15 +105,9 @@ func (network *Network) Listen() {
 					log.Printf("[WARNING] network: No request handler for %v\n", rpc.Header.RemoteProcedure)
 				}
 			} else {
-				network.lock.RLock()
-				if callback, ok := network.Responses[rpc.Header.MessageId]; ok {
-					go callback(&contact, rpc)
-					network.lock.RUnlock()
-					network.lock.Lock()
-					delete(network.Responses, rpc.Header.MessageId)
-					network.lock.Unlock()
+				if callback, ok := network.GetResponseHandler(rpc.Header.MessageId); ok {
+          go callback(&contact, rpc)
 				} else {
-					network.lock.RUnlock()
 					log.Printf("[WARNING] network: No response handler for %v\n", rpc.Header.MessageId)
 				}
 			}
