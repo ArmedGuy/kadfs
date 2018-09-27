@@ -1,6 +1,7 @@
 package kademlia
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
@@ -194,8 +195,18 @@ func TestKademliaFindNodeTimeouts(t *testing.T) {
 	// FindNode should only return (20 - disabled) nodes
 }
 
-func TestKademliaFindValue(t *testing.T) {
-	testnet := createKademliaNetwork(30)
+//
+// Unit test for FIND_VALUE RPC
+// Should always be successful!!!
+//
+func TestKademliaStoreAndFindValue(t *testing.T) {
+	testnet := createKademliaNetwork(100, true)
+
+	// Use this node to send STORE RPC to
+	firstNode := testnet.nodelist[0]
+
+	// Use this node to send FIND_VALUE RPC to
+	otherNode := testnet.nodelist[75]
 
 	// Create file to store
 	hash1 := sha1.New()
@@ -203,14 +214,147 @@ func TestKademliaFindValue(t *testing.T) {
 	fileHashString := hex.EncodeToString(hash1.Sum(nil))
 	fileContent := []byte{1, 2, 3, 4, 5, 1, 3, 3, 7}
 
-	// Send store request to some node
-	//n := testnet[0]
-	//log.Printf("[LOG]: %v answered the store\n", n)
+	// Store file
+	n := firstNode.Store(fileHashString, fileContent)
+	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent, n)
 
-	// Wait for propagation
+	if n > K {
+		log.Fatal("ERROR TestKademliaFindValue1: File stored on too many nodes")
+	}
+
+	// Sleep for propagation
 	time.Sleep(5 * time.Second)
 
-	// Try to find some value
-	//file, ok := state2.FindValue(hex.EncodeToString(h1.Sum(nil)))
-	//log.Printf("Found file returned %v. File content: %v\n", ok, file)
+	// Do a FIND_VALUE RPC
+	file, ok := otherNode.FindValue(fileHashString)
+	log.Printf("FIND_VALUE returned %v with file content: %v\n", ok, file)
+
+	if !ok {
+		log.Fatal("ERROR TestKademliaFindValue1: FIND_VALUE did not return ok for file with id " + fileHashString)
+	}
+}
+
+//
+// Unit test for FIND_VALUE RCP
+// Should never find the file!
+//
+func TestKademliaNoStoreAndFindValue(t *testing.T) {
+	testnet := createKademliaNetwork(30, true)
+
+	// Use this node to send FIND_VALUE RPC to
+	otherNode := testnet.nodelist[15]
+
+	// Create file to store
+	// We never store this file
+	hash1 := sha1.New()
+	hash1.Write([]byte("some/file/path/file.ext"))
+	fileHashString := hex.EncodeToString(hash1.Sum(nil))
+
+	// Do a FIND_VALUE RPC
+	file, ok := otherNode.FindValue(fileHashString)
+	log.Printf("FIND_VALUE returned %v with file content: %v\n", ok, file)
+
+	if ok {
+		log.Fatal("ERROR TestKademliaFindValue2: FIND_VALUE returned ok for a file with id " + fileHashString + " that has never been stored")
+	}
+}
+
+//
+// Unit test for storing one file
+// and then try to find another one
+//
+func TestKademliaStoreAndFindOtherValue(t *testing.T) {
+	testnet := createKademliaNetwork(100, true)
+
+	// Use this node to send STORE RPC to
+	firstNode := testnet.nodelist[32]
+
+	// Use this node to send FIND_VALUE RPC to
+	otherNode := testnet.nodelist[75]
+
+	// Create file to store
+	hash1 := sha1.New()
+	hash1.Write([]byte("some/file/path/file.ext"))
+	fileHashString := hex.EncodeToString(hash1.Sum(nil))
+	fileContent := []byte{1, 2, 3, 4, 5, 1, 3, 3, 7}
+
+	// Store file
+	n := firstNode.Store(fileHashString, fileContent)
+	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent, n)
+
+	if n > K {
+		log.Fatal("ERROR TestKademliaFindValue1: File stored on too many nodes")
+	}
+
+	// Sleep for propagation
+	time.Sleep(5 * time.Second)
+
+	// Find this id
+	hash2 := sha1.New()
+	hash2.Write([]byte("some/file2/path/file.ext"))
+	fileHashString2 := hex.EncodeToString(hash2.Sum(nil))
+
+	// Do a FIND_VALUE RPC
+	file, ok := otherNode.FindValue(fileHashString2)
+	log.Printf("FIND_VALUE returned %v with file content: %v\n", ok, file)
+
+	if ok {
+		log.Fatal("ERROR TestKademliaFindValue3: FIND_VALUE returned ok for file with id " + fileHashString2)
+	}
+}
+
+//
+// Unit test for testing overwriting data
+//
+func TestKademliaStoreOverwrite(t *testing.T) {
+	testnet := createKademliaNetwork(100, true)
+
+	// Use this node to send STORE RPC to
+	firstNode := testnet.nodelist[32]
+
+	// Use this node to send FIND_VALUE RPC to
+	otherNode := testnet.nodelist[75]
+
+	// Create file to store
+	hash1 := sha1.New()
+	hash1.Write([]byte("some/file/path/file.ext"))
+	fileHashString := hex.EncodeToString(hash1.Sum(nil))
+	fileContent1 := []byte{1, 2, 3, 4, 5, 1, 3, 3, 7}
+
+	// Store file
+	n := firstNode.Store(fileHashString, fileContent1)
+	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent1, n)
+
+	if n > K {
+		log.Fatal("ERROR TestKademliaFindValue1: File stored on too many nodes")
+	}
+
+	// Sleep for propagation
+	time.Sleep(5 * time.Second)
+
+	// Create a new file with the same path but different content
+	fileContent2 := []byte{7, 3, 2, 1, 0}
+
+	// Store second file
+	n = firstNode.Store(fileHashString, fileContent2)
+	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent2, n)
+
+	if n > K {
+		log.Fatal("ERROR TestKademliaFindValue1: File stored on too many nodes")
+	}
+
+	// Sleep for propagation
+	time.Sleep(5 * time.Second)
+
+	// Do a FIND_VALUE RPC
+	file, ok := otherNode.FindValue(fileHashString)
+	log.Printf("FIND_VALUE returned %v with file content: %v\n", ok, file)
+
+	if !ok {
+		log.Fatal("ERROR TestKademliaFindValue3: FIND_VALUE returned ok for file with id " + fileHashString)
+	}
+
+	if bytes.Compare(file, fileContent2) != 0 {
+		log.Fatal("ERROR LOL")
+	}
 }
