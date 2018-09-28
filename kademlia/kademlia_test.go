@@ -205,10 +205,11 @@ func TestKademliaStoreAndFindValue(t *testing.T) {
 	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent, n)
 
 	if n > K {
-		log.Fatal("ERROR TestKademliaFindValue1: File stored on too many nodes")
+		log.Fatal("ERROR TestKademliaStoreAndFindValue: File stored on too many nodes")
 	}
 
 	// Sleep for propagation
+	fmt.Println("Sleeping for 5 secs")
 	time.Sleep(5 * time.Second)
 
 	// Do a FIND_VALUE RPC
@@ -216,7 +217,7 @@ func TestKademliaStoreAndFindValue(t *testing.T) {
 	log.Printf("FIND_VALUE returned %v with file content: %v\n", ok, file)
 
 	if !ok {
-		log.Fatal("ERROR TestKademliaFindValue1: FIND_VALUE did not return ok for file with id " + fileHashString)
+		log.Fatal("ERROR TestKademliaStoreAndFindValue: FIND_VALUE did not return ok for file with id " + fileHashString)
 	}
 }
 
@@ -241,7 +242,7 @@ func TestKademliaNoStoreAndFindValue(t *testing.T) {
 	log.Printf("FIND_VALUE returned %v with file content: %v\n", ok, file)
 
 	if ok {
-		log.Fatal("ERROR TestKademliaFindValue2: FIND_VALUE returned ok for a file with id " + fileHashString + " that has never been stored")
+		log.Fatal("ERROR TestKademliaNoStoreAndFindValue: FIND_VALUE returned ok for a file with id " + fileHashString + " that has never been stored")
 	}
 }
 
@@ -269,10 +270,11 @@ func TestKademliaStoreAndFindOtherValue(t *testing.T) {
 	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent, n)
 
 	if n > K {
-		log.Fatal("ERROR TestKademliaFindValue1: File stored on too many nodes")
+		log.Fatal("ERROR TestKademliaStoreAndFindOtherValue: File stored on too many nodes")
 	}
 
 	// Sleep for propagation
+	fmt.Println("Sleeping for 5 secs")
 	time.Sleep(5 * time.Second)
 
 	// Find this id
@@ -285,7 +287,7 @@ func TestKademliaStoreAndFindOtherValue(t *testing.T) {
 	log.Printf("FIND_VALUE returned %v with file content: %v\n", ok, file)
 
 	if ok {
-		log.Fatal("ERROR TestKademliaFindValue3: FIND_VALUE returned ok for file with id " + fileHashString2)
+		log.Fatal("ERROR TestKademliaStoreAndFindOtherValue: FIND_VALUE returned ok for file with id " + fileHashString2)
 	}
 }
 
@@ -312,10 +314,11 @@ func TestKademliaStoreOverwrite(t *testing.T) {
 	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent1, n)
 
 	if n > K {
-		log.Fatal("ERROR TestKademliaFindValue1: File stored on too many nodes")
+		log.Fatal("ERROR TestKademliaStoreOverwrite: File stored on too many nodes")
 	}
 
 	// Sleep for propagation
+	fmt.Println("Sleeping for 5 secs")
 	time.Sleep(5 * time.Second)
 
 	// Create a new file with the same path but different content
@@ -326,10 +329,11 @@ func TestKademliaStoreOverwrite(t *testing.T) {
 	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent2, n)
 
 	if n > K {
-		log.Fatal("ERROR TestKademliaFindValue1: File stored on too many nodes")
+		log.Fatal("ERROR TestKademliaStoreOverwrite: File stored on too many nodes")
 	}
 
 	// Sleep for propagation
+	fmt.Println("Sleeping for 5 secs")
 	time.Sleep(5 * time.Second)
 
 	// Do a FIND_VALUE RPC
@@ -337,7 +341,7 @@ func TestKademliaStoreOverwrite(t *testing.T) {
 	log.Printf("FIND_VALUE returned %v with file content: %v\n", ok, file)
 
 	if !ok {
-		log.Fatal("ERROR TestKademliaFindValue3: FIND_VALUE returned ok for file with id " + fileHashString)
+		log.Fatal("ERROR TestKademliaStoreOverwrite: FIND_VALUE returned ok for file with id " + fileHashString)
 	}
 
 	if bytes.Compare(file, fileContent2) != 0 {
