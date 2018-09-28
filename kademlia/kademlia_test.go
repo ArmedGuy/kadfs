@@ -183,6 +183,38 @@ func TestKademliaNoEviction(t *testing.T) {
 func TestKademliaFindNodePanic(t *testing.T) {
 	// Create enough nodes to trigger a panic during lookup
 	// Panic should find 1 extra node after panic is done
+	testnet := createKademliaNetwork(1, false)
+	nearId := nextKademliaID()
+	for i := 0; i < 3; i++ {
+		id := nextKademliaID()
+		node := createKademliaNode(id, 1+i, testnet)
+		testnet.addToNetwork(node)
+		testnet.origin.RoutingTable.AddContact(*node.Network.GetLocalContact())
+
+	}
+
+	panicId := nextKademliaID()
+	panicNode := createKademliaNode(panicId, 4, testnet)
+	testnet.addToNetwork(panicNode)
+	testnet.origin.RoutingTable.AddContact(*panicNode.Network.GetLocalContact())
+
+	nearNode := createKademliaNode(nearId, 5, testnet)
+	testnet.addToNetwork(nearNode)
+	panicNode.RoutingTable.AddContact(*nearNode.Network.GetLocalContact())
+
+	tryToFind := false
+	nearNode.Network.SetRequestHandler("FIND_NODE", func(sender *Contact, rpc *RPCMessage) {
+		tryToFind = true
+		// this will timeout the response, but atleast we got the panic
+	})
+
+	testnet.origin.FindNode(nearId)
+	time.Sleep(3)
+
+	if !tryToFind {
+		log.Fatal("Did not attempt to find node which was 4th in list. No panic sent")
+	}
+
 }
 
 func TestKademliaFindNodeTimeouts(t *testing.T) {

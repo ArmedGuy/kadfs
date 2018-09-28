@@ -65,9 +65,9 @@ func (candidates *ContactCandidates) GetAvailableContacts(count int) []Contact {
 	for _, c := range candidates.contacts {
 		if c.IsAvailable() {
 			availContacts = append(availContacts, c)
-		}
-		if count--; count == 0 {
-			break
+			if count--; count == 0 {
+				break
+			}
 		}
 	}
 	return availContacts
@@ -152,9 +152,9 @@ func (table *TemporaryLookupTable) GetAvailableContacts(count int) []Contact {
 	for _, c := range table.candidates {
 		if c.Contact.IsAvailable() {
 			availContacts = append(availContacts, *c.Contact)
-		}
-		if count--; count == 0 {
-			break
+			if count--; count == 0 {
+				break
+			}
 		}
 	}
 	return availContacts
@@ -165,9 +165,9 @@ func (table *TemporaryLookupTable) GetNewCandidates(count int) []*LookupCandidat
 	for _, c := range table.candidates {
 		if !c.Queried && c.Contact.IsAvailable() {
 			availCandidates = append(availCandidates, c)
-		}
-		if count--; count == 0 {
-			break
+			if count--; count == 0 {
+				break
+			}
 		}
 	}
 	return availCandidates
