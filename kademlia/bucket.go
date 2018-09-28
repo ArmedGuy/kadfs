@@ -8,14 +8,16 @@ import (
 // bucket definition
 // contains a List
 type bucket struct {
-	list *list.List
-	rw   *sync.RWMutex
+	list  *list.List
+	state *Kademlia
+	rw    *sync.RWMutex
 }
 
 // newBucket returns a new instance of a bucket
-func newBucket() *bucket {
+func newBucket(state *Kademlia) *bucket {
 	bucket := &bucket{}
 	bucket.list = list.New()
+	bucket.state = state
 	bucket.rw = &sync.RWMutex{}
 	return bucket
 }
@@ -36,6 +38,15 @@ func (bucket *bucket) AddContact(contact Contact) {
 	if element == nil {
 		if bucket.list.Len() < bucketSize {
 			bucket.list.PushFront(contact)
+		} else {
+			element = bucket.list.Back()
+			old, _ := element.Value.(Contact)
+			if bucket.state.Ping(&old) {
+				bucket.list.MoveToFront(element)
+			} else {
+				bucket.list.Remove(element)
+				bucket.list.PushFront(contact)
+			}
 		}
 	} else {
 		bucket.list.MoveToFront(element)
