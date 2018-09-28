@@ -106,7 +106,7 @@ func (network *Network) Listen() {
 				}
 			} else {
 				if callback, ok := network.GetResponseHandler(rpc.Header.MessageId); ok {
-          go callback(&contact, rpc)
+					go callback(&contact, rpc)
 				} else {
 					log.Printf("[WARNING] network: No response handler for %v\n", rpc.Header.MessageId)
 				}

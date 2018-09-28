@@ -22,11 +22,7 @@ func (network *Network) registerMessageHandlers() {
 		}
 		resRPC := rpc.GetResponse()
 		resRPC.SetPayloadFromMessage(res)
-<<<<<<< HEAD
-		network.SendUDPPacket(sender, resRPC.GetBytes())
-=======
 		network.Transport.SendRPCMessage(sender, resRPC)
->>>>>>> 8707bd202bce0e2a797e45ca419c223a96711512
 	})
 
 	//

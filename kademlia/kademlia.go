@@ -61,8 +61,6 @@ func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
 		} else {
 			panic = false // reset panic if new closest found
 		}
-		closest = sendto[0].Contact.ID
-		log.Printf("new closest: %v\n", closest)
 		// create a shared channel for all our responses
 		reschan := make(chan *LookupResponse)
 		handled := len(sendto)
@@ -111,6 +109,7 @@ func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
 		if newClosestID.CalcDistance(target).Less(closest.CalcDistance(target)) {
 			changed = true
 			closest = newClosestID
+			log.Printf("new closest: %v\n", closest)
 		}
 	}
 }

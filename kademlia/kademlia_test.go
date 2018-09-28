@@ -19,7 +19,6 @@ type kademliatestnetwork struct {
 func (global *kademliatestnetwork) addToNetwork(node *Kademlia) {
 	global.nodelist = append(global.nodelist, node)
 	global.nodes[node.Network.GetLocalContact().ID.String()] = node
-
 }
 
 type InternalRoutingTransport struct {
@@ -42,14 +41,12 @@ func (trans *InternalRoutingTransport) SendRPCMessage(to *Contact, rpc *RPCMessa
 		callback, _ := othernetwork.Requests[rpc.Header.RemoteProcedure]
 		go callback(trans.From, rpc)
 	} else {
-		log.Println("Sending response")
 
 		if callback, ok := othernetwork.GetResponseHandler(rpc.Header.MessageId); ok {
 			go callback(trans.From, rpc)
 		} else {
 			log.Println("No response found")
 		}
-		log.Println("Sent response")
 	}
 }
 
@@ -182,17 +179,6 @@ func TestKademliaNoEviction(t *testing.T) {
 	if contactInList(addme.Network.GetLocalContact(), closest) {
 		log.Fatal("In closest 30 contacts! Should not be in buckets")
 	}
-
-}
-
-func TestKademliaFindNodePanic(t *testing.T) {
-	// Create enough nodes to trigger a panic during lookup
-	// Panic should find 1 extra node after panic is done
-}
-
-func TestKademliaFindNodeTimeouts(t *testing.T) {
-	// Create 20 nodes, and disable a few of them
-	// FindNode should only return (20 - disabled) nodes
 }
 
 //
@@ -357,4 +343,46 @@ func TestKademliaStoreOverwrite(t *testing.T) {
 	if bytes.Compare(file, fileContent2) != 0 {
 		log.Fatal("ERROR LOL")
 	}
+}
+
+func TestKademliaFindNodePanic(t *testing.T) {
+	// Create enough nodes to trigger a panic during lookup
+	// Panic should find 1 extra node after panic is done
+	testnet := createKademliaNetwork(1, false)
+	nearId := nextKademliaID()
+	for i := 0; i < 3; i++ {
+		id := nextKademliaID()
+		node := createKademliaNode(id, 1+i, testnet)
+		testnet.addToNetwork(node)
+		testnet.origin.RoutingTable.AddContact(*node.Network.GetLocalContact())
+
+	}
+
+	panicId := nextKademliaID()
+	panicNode := createKademliaNode(panicId, 4, testnet)
+	testnet.addToNetwork(panicNode)
+	testnet.origin.RoutingTable.AddContact(*panicNode.Network.GetLocalContact())
+
+	nearNode := createKademliaNode(nearId, 5, testnet)
+	testnet.addToNetwork(nearNode)
+	panicNode.RoutingTable.AddContact(*nearNode.Network.GetLocalContact())
+
+	tryToFind := false
+	nearNode.Network.SetRequestHandler("FIND_NODE", func(sender *Contact, rpc *RPCMessage) {
+		tryToFind = true
+		// this will timeout the response, but atleast we got the panic
+	})
+
+	testnet.origin.FindNode(nearId)
+	time.Sleep(3)
+
+	if !tryToFind {
+		log.Fatal("Did not attempt to find node which was 4th in list. No panic sent")
+	}
+
+}
+
+func TestKademliaFindNodeTimeouts(t *testing.T) {
+	// Create 20 nodes, and disable a few of them
+	// FindNode should only return (20 - disabled) nodes
 }
