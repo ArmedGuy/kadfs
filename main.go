@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"math/rand"
 	"net"
@@ -84,6 +83,11 @@ func main() {
 	}
 
 	// Listen for user input here whenever that gets implemented
-	fmt.Scanln()
+	// fmt.Scanln()
+
+	for {
+		time.Sleep(5 * time.Second)
+		examineRoutingTable(state)
+	}
 
 }

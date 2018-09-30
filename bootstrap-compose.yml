@@ -14,12 +14,3 @@ services:
     networks:
       kademlia_network:
         ipv4_address: 172.16.238.10
-  
-  kademliaNodes:
-    image: kademlia:latest
-    command: 4000 0000000000000000000000000000000000000000 172.16.238.10:4000
-    depends_on:
-      - kademliaBootstrapNode
-    stdin_open: true
-    networks:
-      - kademlia_network

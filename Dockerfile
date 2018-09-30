@@ -11,5 +11,4 @@ EXPOSE 4000
 RUN go build
 
 ENTRYPOINT ["./kadfs"] 
-CMD ["4000"]
 
