@@ -3,31 +3,23 @@ version: "3.3"
 networks:
   kademlia_network:
     ipam: 
-      driver: default
       config:
         - subnet: 172.16.238.0/24
 
 services:
   kademliaBootstrapNode:
-    image: yee:latest
+    image: kademlia:latest
     command: "4000"
     stdin_open: true
-    tty: true
     networks:
       kademlia_network:
         ipv4_address: 172.16.238.10
   
   kademliaNodes:
-    image: yee:latest
+    image: kademlia:latest
     command: 4000 0000000000000000000000000000000000000000 172.16.238.10:4000
     depends_on:
       - kademliaBootstrapNode
     stdin_open: true
-    tty: true
-    deploy:
-      replicas: 100
-      restart_policy:
-        condition: on-failure
     networks:
       - kademlia_network
-      
