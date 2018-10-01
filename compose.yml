@@ -21,4 +21,6 @@ services:
       replicas: 99
       restart_policy:
         condition: on-failure
+    networks:
+      - kademlia_network
 
