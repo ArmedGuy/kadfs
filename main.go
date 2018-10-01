@@ -74,11 +74,12 @@ func main() {
 		log.Printf("[INFO] Sleeping for 2 seconds to make sure the bootstrap node is up.")
 		time.Sleep(2 * time.Second)
 
+		log.Printf("[INFO] Bootstrapping towards %v - %v", *bootstrapID, *bootstrapIP)
+
 		id2 := kademlia.NewKademliaID(*bootstrapID)
 		bootstrapNode := kademlia.NewContact(id2, *bootstrapIP) // TODO: change
 
 		// Should probably retry the boostrap a few times if we fail
-		log.Printf("[INFO] Bootstrapping towards %v\n", bootstrapNode)
 		state.Bootstrap(&bootstrapNode)
 	}
 
