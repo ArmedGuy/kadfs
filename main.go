@@ -5,23 +5,26 @@ import (
 	"log"
 	"math/rand"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/ArmedGuy/kadfs/kademlia"
 )
 
-// Massive workaround because docker does not like 127.0.0.1
-func GetInternalIP() string {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
+func GetLocalIP() string {
+	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		log.Fatal(err)
+		return ""
 	}
-	defer conn.Close()
-
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
-
-	return localAddr.IP.String()
-
+	for _, address := range addrs {
+		// check the address type and if it is not a loopback the display it
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+	return ""
 }
 
 func examineRoutingTable(state *kademlia.Kademlia) {
@@ -52,6 +55,10 @@ func main() {
 		myID = kademlia.NewRandomKademliaID()
 	}
 
+	if strings.Contains(*listen, "0.0.0.0") {
+		parts := strings.Split(*listen, ":")
+		*listen = GetLocalIP() + ":" + parts[1]
+	}
 	me := kademlia.NewContact(myID, *listen)
 	myNetwork := kademlia.NewNetwork(&me)
 
