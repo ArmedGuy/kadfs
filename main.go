@@ -18,7 +18,7 @@ func GetLocalIP() string {
 	}
 	for _, address := range addrs {
 		// check the address type and if it is not a loopback the display it
-		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && !ipnet.IP.IsLinkLocalUnicast() && !ipnet.IP.IsLinkLocalMulticast() {
 			if ipnet.IP.To4() != nil {
 				return ipnet.IP.String()
 			}
@@ -57,6 +57,7 @@ func main() {
 
 	if strings.Contains(*listen, "0.0.0.0") {
 		parts := strings.Split(*listen, ":")
+		log.Printf("[DEBUG] kadfs: Using local ip %v for assignment", GetLocalIP())
 		*listen = GetLocalIP() + ":" + parts[1]
 	}
 	me := kademlia.NewContact(myID, *listen)
