@@ -69,7 +69,7 @@ func main() {
 		}
 	}()
 
-	if bootstrapID != nil && bootstrapIP != nil {
+	if !*origin {
 
 		log.Printf("[INFO] Sleeping for 2 seconds to make sure the bootstrap node is up.")
 		time.Sleep(2 * time.Second)
@@ -78,6 +78,7 @@ func main() {
 		bootstrapNode := kademlia.NewContact(id2, *bootstrapIP) // TODO: change
 
 		// Should probably retry the boostrap a few times if we fail
+		log.Printf("[INFO] Bootstrapping towards %v\n", bootstrapNode)
 		state.Bootstrap(&bootstrapNode)
 	}
 

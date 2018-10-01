@@ -7,7 +7,7 @@ networks:
         - subnet: 172.16.238.0/24
 
 services:
-  kadfs-boostrap:
+  kadfs-bootstrap:
     image: kademlia:latest
     command: "--listen 0.0.0.0:4000 --origin"
     networks:
