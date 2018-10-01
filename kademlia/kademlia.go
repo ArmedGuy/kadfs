@@ -279,7 +279,8 @@ func (kademlia *Kademlia) Republish() {
 	m := kademlia.FileMemoryStore.GetKeysAndValueForRepublish()
 
 	for key, value := range m {
-		_ = kademlia.Store(key, *value.Data)
+		log.Printf("[INFO] Republishing data with key: %v\n", key)
+		go kademlia.Store(key, *value.Data)
 	}
 }
 
@@ -298,14 +299,17 @@ func (kademlia *Kademlia) Replicate() {
 
 		if iAmInClosest {
 			// update time
-			kademlia.FileMemoryStore.UpdateReplicateTime(key)
+			log.Printf("[INFO] Updating replicate time with key: %v\n", key)
+			go kademlia.FileMemoryStore.UpdateReplicateTime(key)
 		} else {
-			kademlia.FileMemoryStore.Delete(key)
+			log.Printf("[INFO] Deleting data with key: %v\n", key)
+			go kademlia.FileMemoryStore.Delete(key)
 		}
 
 	}
 }
 
 func (kademlia *Kademlia) Expire() {
+	log.Printf("[INFO] Deleting all expired data\n")
 	kademlia.FileMemoryStore.DeleteExpiredData()
 }

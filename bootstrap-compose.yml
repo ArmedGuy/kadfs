@@ -1,0 +1,16 @@
+version: "3.3"
+
+networks:
+  kademlia_network:
+    ipam: 
+      config:
+        - subnet: 172.16.238.0/24
+
+services:
+  kademliaBootstrapNode:
+    image: kademlia:latest
+    command: "4000"
+    stdin_open: true
+    networks:
+      kademlia_network:
+        ipv4_address: 172.16.238.10

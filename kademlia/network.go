@@ -93,6 +93,7 @@ func (network *Network) Listen() {
 			log.Printf("[WARNING] network: Could not read header, error: %v\n", err)
 			return
 		} else {
+			log.Printf("[INFO] network: got a packet PEPE\n")
 			sender := caddr.String()
 			rpc := network.NewRPCFromDatagram(buf)
 			contact := NewContact(NewKademliaID(rpc.Header.SenderId), sender)
