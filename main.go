@@ -85,8 +85,13 @@ func main() {
 		log.Printf("[INFO] kadfs: Sleeping for 2 seconds to make sure the bootstrap node is up.")
 		time.Sleep(2 * time.Second)
 
+		raddr, err := net.ResolveUDPAddr("udp", *bootstrapIP)
+		if err != nil {
+			log.Fatalf("[ERROR] kadfs: Could not resolve %v", *bootstrapIP)
+		}
+
 		id2 := kademlia.NewKademliaID(*bootstrapID)
-		bootstrapNode := kademlia.NewContact(id2, *bootstrapIP) // TODO: change
+		bootstrapNode := kademlia.NewContact(id2, raddr.String()) // TODO: change
 
 		// Should probably retry the boostrap a few times if we fail
 		state.Bootstrap(&bootstrapNode)
