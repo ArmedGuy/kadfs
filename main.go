@@ -43,6 +43,8 @@ func main() {
 	var bootstrapID = flag.String("bootstrap-id", "", "ID of node to bootstrap towards")
 	var bootstrapIP = flag.String("bootstrap-ip", "", "IP of node to bootstrap towards")
 
+	flag.Parse()
+
 	if *origin {
 		myID = kademlia.NewKademliaID("0000000000000000000000000000000000000000")
 	} else {
@@ -62,19 +64,18 @@ func main() {
 			// should probably be different go routines with different time for updates
 			timer := time.NewTimer(150 * time.Second)
 			<-timer.C
-			log.Printf("[INFO] Running republish, expire and replicate")
+			log.Printf("[INFO] kadfs: Running republish, expire and replicate")
 			go state.Replicate()
 			go state.Republish()
 			go state.Expire()
 		}
 	}()
 
-	if !*origin {
-
-		log.Printf("[INFO] Sleeping for 2 seconds to make sure the bootstrap node is up.")
+	if *origin {
+		log.Println("[INFO] kadfs: Running in origin mode, no bootstrap!")
+	} else {
+		log.Printf("[INFO] kadfs: Sleeping for 2 seconds to make sure the bootstrap node is up.")
 		time.Sleep(2 * time.Second)
-
-		log.Printf("[INFO] Bootstrapping towards %v - %v", *bootstrapID, *bootstrapIP)
 
 		id2 := kademlia.NewKademliaID(*bootstrapID)
 		bootstrapNode := kademlia.NewContact(id2, *bootstrapIP) // TODO: change
