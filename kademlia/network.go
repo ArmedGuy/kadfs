@@ -89,7 +89,7 @@ func (network *Network) Listen() {
 	buf := make([]byte, 4096) // Come up with a reasonable size for this!
 
 	for {
-		if _, caddr, err := conn.ReadFromUDP(buf); err != nil { // TODO: extract and use caddr
+		if _, caddr, err := conn.ReadFromUDP(buf); err != nil {
 			log.Printf("[WARNING] network: Could not read header, error: %v\n", err)
 			return
 		} else {

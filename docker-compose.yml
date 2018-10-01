@@ -2,25 +2,29 @@ version: "3.3"
 
 networks:
   kademlia_network:
-    ipam: 
-      config:
-        - subnet: 172.16.238.0/24
 
 services:
   kadfs-bootstrap:
     image: kademlia:latest
     command: "--listen=0.0.0.0:4000 --origin=true"
     networks:
-      - kademlia_network
+      kademlia_network:
+        aliases:
+          - bootstrap
+    deploy:
+      endpoint_mode: dnsrr
   kadfs-nodes:
     image: kademlia:latest
     command: "--listen=0.0.0.0:4000 --bootstrap-id=0000000000000000000000000000000000000000 --bootstrap-ip=bootstrap:4000"
     links:
       - "kadfs-bootstrap:bootstrap"
+    depends_on:
+      - kadfs-bootstrap
     deploy:
       replicas: 99
       restart_policy:
         condition: on-failure
+      endpoint_mode: dnsrr
     networks:
       - kademlia_network
 

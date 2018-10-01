@@ -79,7 +79,7 @@ func nextKademliaID() *KademliaID {
 }
 
 func createKademliaNode(id *KademliaID, offset int, global *kademliatestnetwork) *Kademlia {
-	me := NewContact(id, fmt.Sprintf("localhost:%v", 8000+offset))
+	me := NewContact(id, fmt.Sprintf("10.0.0.%v:%v", offset, 8000+offset))
 	network := NewNetwork(&me)
 	// Set internal transport solution so we dont need UDP ports
 	network.Transport = &InternalRoutingTransport{global: global, From: &me}
