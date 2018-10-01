@@ -1,10 +1,10 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"math/rand"
 	"net"
-	"os"
 	"time"
 
 	"github.com/ArmedGuy/kadfs/kademlia"
@@ -37,18 +37,20 @@ func examineRoutingTable(state *kademlia.Kademlia) {
 func main() {
 	var myID *kademlia.KademliaID
 
-	if len(os.Args) == 2 {
+	var origin = flag.Bool("origin", false, "should node be a bootstrap node")
+	var listen = flag.String("listen", "0.0.0.0:4000", "which ip:port to listen for kademlia on")
+
+	var bootstrapID = flag.String("bootstrap-id", "", "ID of node to bootstrap towards")
+	var bootstrapIP = flag.String("bootstrap-ip", "", "IP of node to bootstrap towards")
+
+	if *origin {
 		myID = kademlia.NewKademliaID("0000000000000000000000000000000000000000")
-	} else if len(os.Args) == 4 {
+	} else {
 		rand.Seed(time.Now().UnixNano())
 		myID = kademlia.NewRandomKademliaID()
-	} else {
-		log.Fatal("Incorrectly formatted arguments, exiting...")
 	}
 
-	ip := GetInternalIP()
-
-	me := kademlia.NewContact(myID, ip+":"+os.Args[1])
+	me := kademlia.NewContact(myID, *listen)
 	myNetwork := kademlia.NewNetwork(&me)
 
 	state := kademlia.NewKademliaState(me, myNetwork)
@@ -67,16 +69,13 @@ func main() {
 		}
 	}()
 
-	if len(os.Args) == 4 {
+	if bootstrapID != nil && bootstrapIP != nil {
 
 		log.Printf("[INFO] Sleeping for 2 seconds to make sure the bootstrap node is up.")
 		time.Sleep(2 * time.Second)
 
-		bootstrapID := os.Args[2]
-		bootstrapIP := os.Args[3]
-
-		id2 := kademlia.NewKademliaID(bootstrapID)
-		bootstrapNode := kademlia.NewContact(id2, bootstrapIP) // TODO: change
+		id2 := kademlia.NewKademliaID(*bootstrapID)
+		bootstrapNode := kademlia.NewContact(id2, *bootstrapIP) // TODO: change
 
 		// Should probably retry the boostrap a few times if we fail
 		state.Bootstrap(&bootstrapNode)
