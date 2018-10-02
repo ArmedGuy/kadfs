@@ -10,12 +10,12 @@ services:
     networks:
       kademlia_network:
         aliases:
-          - bootstrap
+          - kadfsbootstrap
     deploy:
       endpoint_mode: dnsrr
   kadfs-nodes:
     image: kademlia:latest
-    command: "--listen=0.0.0.0:4000 --bootstrap-id=0000000000000000000000000000000000000000 --bootstrap-ip=bootstrap:4000"
+    command: "--listen=0.0.0.0:4000 --bootstrap-id=0000000000000000000000000000000000000000 --bootstrap-ip=kadfsbootstrap:4000"
     links:
       - "kadfs-bootstrap:bootstrap"
     depends_on:
