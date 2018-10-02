@@ -248,7 +248,7 @@ func TestKademliaNoStoreAndFindValue(t *testing.T) {
 
 //
 // Unit test for storing one file
-// and then try to find another one
+// and then try to find another one that isn't stored on the network
 //
 func TestKademliaStoreAndFindOtherValue(t *testing.T) {
 	testnet := createKademliaNetwork(100, true)
@@ -345,7 +345,7 @@ func TestKademliaStoreOverwrite(t *testing.T) {
 	}
 
 	if bytes.Compare(file, fileContent2) != 0 {
-		log.Fatal("ERROR LOL")
+		log.Fatal("ERROR TestKademliaStoreOverwrite: Received wrong file in FIND_VALUE request")
 	}
 }
 
