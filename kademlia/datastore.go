@@ -155,7 +155,7 @@ func (store *InMemoryStore) Update(hash string, data []byte, isOG bool, expire, 
 	store.files[hash].Data = &data
 	store.files[hash].isOG = isOG
 	store.files[hash].expire = expire
-	store.files[hash].replicate = expire
-	store.files[hash].republish = expire
+	store.files[hash].replicate = replicate
+	store.files[hash].republish = republish
 
 }

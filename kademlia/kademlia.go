@@ -281,7 +281,7 @@ func (kademlia *Kademlia) Ping(contact *Contact) bool {
 	}
 }
 
-// Always OG that republishes hence true
+// Always orignial publisher that republishes hence true
 func (kademlia *Kademlia) Republish() {
 	m := kademlia.FileMemoryStore.GetKeysAndValueForRepublish()
 

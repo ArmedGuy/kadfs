@@ -401,7 +401,7 @@ func TestKademliaExpireTimer(t *testing.T) {
 	fileHashString := hex.EncodeToString(hash1.Sum(nil))
 	fileContent1 := []byte{1, 2, 3, 4, 5, 1, 3, 3, 7}
 
-	// Store file
+	// Store file with expire happening in 1 sec
 	n := firstNode.Store(fileHashString, fileContent1, true, 0)
 
 	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent1, n)
@@ -418,9 +418,9 @@ func TestKademliaExpireTimer(t *testing.T) {
 	firstNode.Expire()
 
 	file, ok := firstNode.FileMemoryStore.GetData(fileHashString)
-	log.Printf("FIND_VALUE returned %v with file content: %v\n", ok, file)
+	log.Printf("GetData returned %v with file content: %v\n", ok, file)
 
-	if ok {
+	if ok || file != nil {
 		log.Fatal("Found a expired piece of data on firstNode")
 	}
 
@@ -450,7 +450,6 @@ func TestKademliaRepublishTimer(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	secondNode := testnet.nodelist[1]
-	file, _ := secondNode.FileMemoryStore.GetFileObject(fileHashString)
 
 	time.Sleep(1 * time.Second)
 
@@ -464,7 +463,7 @@ func TestKademliaRepublishTimer(t *testing.T) {
 	file1, _ := firstNode.FileMemoryStore.GetFileObject(fileHashString)
 	file2, _ := secondNode.FileMemoryStore.GetFileObject(fileHashString)
 
-	if file.republish != file2.republish {
+	if file1.republish != file2.republish {
 		log.Fatalf("Node 1 and Node 2 have different republish times. Node1: %v, Node2: %v", file1.republish, file2.republish)
 	}
 }
@@ -493,7 +492,6 @@ func TestKademliaReplicateTimer(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	secondNode := testnet.nodelist[1]
-	file, _ := secondNode.FileMemoryStore.GetFileObject(fileHashString)
 
 	time.Sleep(1 * time.Second)
 
@@ -507,7 +505,7 @@ func TestKademliaReplicateTimer(t *testing.T) {
 	file1, _ := firstNode.FileMemoryStore.GetFileObject(fileHashString)
 	file2, _ := secondNode.FileMemoryStore.GetFileObject(fileHashString)
 
-	if file.replicate != file2.replicate {
+	if file1.replicate != file2.replicate {
 		log.Fatalf("Node 1 and Node 2 have different republish times. Node1: %v, Node2: %v", file1.republish, file2.republish)
 	}
 
