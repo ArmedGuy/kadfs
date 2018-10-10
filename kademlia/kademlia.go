@@ -45,7 +45,7 @@ func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
 		sendto := candidates.GetNewCandidates(alpha)
 		// special case, cant send to anybody, just return what I got now
 		if len(sendto) == 0 {
-			log.Println("out of sendtos")
+			//log.Println("out of sendtos")
 			return candidates.GetAvailableContacts(K)
 		}
 		if !changed {
@@ -83,12 +83,12 @@ func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
 						tmp = append(tmp, c)
 					}
 				}
-				log.Println("got response")
+				//log.Println("got response")
 				sendto = tmp
 				candidates.Append(response.Contacts)
 				break
 			case <-time.After(3 * time.Second):
-				log.Println("timeout of response")
+				log.Println("[WARNING] Timeout of response")
 				break
 			}
 			handled--
@@ -117,7 +117,7 @@ func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
 func (kademlia *Kademlia) FindValue(hash string) ([]byte, bool) { // Return File and a bool indicating error (file not found?)
 	// Before we do anything, we check if we have the file
 	log.Printf("[INFO] Kademlia FindValue: Searching for file in local storage\n")
-	file, ok := kademlia.FileMemoryStore.Get(hash)
+	file, ok := kademlia.FileMemoryStore.GetData(hash)
 	log.Printf("[INFO] Kademlia FindValue: Local file status: %v, File: %v\n", ok, file)
 
 	if ok {
@@ -168,7 +168,7 @@ func (kademlia *Kademlia) FindValue(hash string) ([]byte, bool) { // Return File
 		}
 
 		closestNode := sendTo[0].Contact.ID
-		log.Printf("[INFO] kademlia FindValue: Closest node is %v\n", closestNode)
+		//log.Printf("[INFO] kademlia FindValue: Closest node is %v\n", closestNode)
 
 		// Create a shared channel for responses
 		responseChannel := make(chan *FindValueResponse)
@@ -176,7 +176,7 @@ func (kademlia *Kademlia) FindValue(hash string) ([]byte, bool) { // Return File
 
 		// Query each candidate and update client query state
 		for _, candidate := range sendTo {
-			log.Printf("[INFO] kademlia FindValue: Sending message to %v\n", candidate.Contact)
+			//log.Printf("[INFO] kademlia FindValue: Sending message to %v\n", candidate.Contact)
 			candidate.Queried = true
 			go kademlia.Network.SendFindValueMessage(candidate.Contact, hash, responseChannel)
 		}
@@ -199,8 +199,8 @@ func (kademlia *Kademlia) FindValue(hash string) ([]byte, bool) { // Return File
 						}
 					}
 					log.Println("[INFO] Kademlia FindValue: got response")
-					for _, c := range response.Contacts {
-						log.Printf("[INFO] Kademlia FindValue: FindValuegot contact %v\n", c)
+					for _, _ = range response.Contacts {
+						//log.Printf("[INFO] Kademlia FindValue: FindValuegot contact %v\n", c)
 					}
 					sendTo = tmp
 					candidates.Append(response.Contacts)
@@ -234,16 +234,22 @@ func (kademlia *Kademlia) FindValue(hash string) ([]byte, bool) { // Return File
 	}
 }
 
-func (kademlia *Kademlia) Store(hash string, data []byte) int {
+func (kademlia *Kademlia) Store(hash string, data []byte, isOG bool, expireTimer int32) int {
 	reschan := make(chan bool)
 	closest := kademlia.FindNode(NewKademliaID(hash))
 
-	kademlia.FileMemoryStore.Put(hash, data, true)
+	kademlia.FileMemoryStore.Put(hash, data, isOG, expireTimer)
 
 	for _, node := range closest {
 		if node.ID != kademlia.Network.GetLocalContact().ID {
 			n := node
-			go kademlia.Network.SendStoreMessage(&n, hash, data, reschan)
+			if isOG {
+				// Send a expire time that is tExpire seconds since i am the orignial publisher.
+				go kademlia.Network.SendStoreMessage(&n, hash, data, reschan, int32(tExpire))
+			} else {
+				// Send a expire time that is tReplicate seconds since i am not original publisher
+				go kademlia.Network.SendStoreMessage(&n, hash, data, reschan, int32(tReplicate))
+			}
 		}
 	}
 
@@ -275,19 +281,20 @@ func (kademlia *Kademlia) Ping(contact *Contact) bool {
 	}
 }
 
+// Always OG that republishes hence true
 func (kademlia *Kademlia) Republish() {
 	m := kademlia.FileMemoryStore.GetKeysAndValueForRepublish()
 
 	for key, value := range m {
 		log.Printf("[INFO] Republishing data with key: %v\n", key)
-		go kademlia.Store(key, *value.Data)
+		go kademlia.Store(key, *value.Data, true, tRepublish)
 	}
 }
 
 func (kademlia *Kademlia) Replicate() {
-	keys := kademlia.FileMemoryStore.GetKeysForReplicate()
+	m := kademlia.FileMemoryStore.GetKeysForReplicate()
 
-	for _, key := range keys {
+	for key, value := range m {
 		closest := kademlia.FindNode(NewKademliaID(key))
 
 		iAmInClosest := false
@@ -301,6 +308,7 @@ func (kademlia *Kademlia) Replicate() {
 			// update time
 			log.Printf("[INFO] Updating replicate time with key: %v\n", key)
 			go kademlia.FileMemoryStore.UpdateReplicateTime(key)
+			go kademlia.Store(key, *value.Data, false, tReplicate)
 		} else {
 			log.Printf("[INFO] Deleting data with key: %v\n", key)
 			go kademlia.FileMemoryStore.Delete(key)

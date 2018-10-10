@@ -2,6 +2,7 @@ package kademlia
 
 import (
 	"log"
+	"time"
 
 	"github.com/ArmedGuy/kadfs/message"
 )
@@ -36,7 +37,7 @@ func (network *Network) registerMessageHandlers() {
 		rpc.GetMessageFromPayload(req)
 
 		// First, check if we have the file
-		file, ok := network.kademlia.FileMemoryStore.Get(req.Hash)
+		file, ok := network.kademlia.FileMemoryStore.GetData(req.Hash)
 
 		// Buuh, we do not have the file, respond wiht K closest nodes to file
 		if !ok {
@@ -78,7 +79,24 @@ func (network *Network) registerMessageHandlers() {
 
 		log.Printf("[INFO]: Stored file on node %v\n", network.kademlia.Network.GetLocalContact().ID)
 
-		network.kademlia.FileMemoryStore.Put(req.Hash, req.Data, false)
+		old, ok := network.kademlia.FileMemoryStore.GetFileObject(req.Hash)
+
+		// Check if we already have the file
+		if ok {
+			// Ok we have the file, check if old.expire is before req.expire
+			expireTimer := time.Now().Add(time.Duration(req.Expire) * time.Second)
+
+			if old.expire.Before(expireTimer) {
+				// If it is, update the expire time to req.Expire
+				network.kademlia.FileMemoryStore.Update(req.Hash, req.Data, old.isOG, expireTimer, time.Now().Add(tReplicate*time.Second), time.Now().Add(tRepublish*time.Second))
+			} else {
+				network.kademlia.FileMemoryStore.Update(req.Hash, req.Data, old.isOG, old.expire, time.Now().Add(tReplicate*time.Second), time.Now().Add(tRepublish*time.Second))
+			}
+
+		} else {
+			// We do not have a file, just store it
+			network.kademlia.FileMemoryStore.Put(req.Hash, req.Data, false, req.Expire)
+		}
 
 		resRPC := rpc.GetResponse()
 		network.Transport.SendRPCMessage(sender, resRPC)

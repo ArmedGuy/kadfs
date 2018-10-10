@@ -14,7 +14,7 @@ const tRepublish = 86400
 const tExpire = 86400
 
 type Datastore interface {
-	Put(hash string, data []byte)
+	Put(hash string, data []byte, isOriginal bool, expire int32)
 	Get(hash string) []byte
 	Delete(hash string)
 	GetKeysForReplicate() []string
@@ -52,7 +52,7 @@ func HashToKademliaID(hash string) *KademliaID {
 	return NewKademliaID(hash)
 }
 
-func (store *InMemoryStore) Put(hash string, data []byte, isOriginal bool) {
+func (store *InMemoryStore) Put(hash string, data []byte, isOriginal bool, expire int32) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
@@ -60,12 +60,26 @@ func (store *InMemoryStore) Put(hash string, data []byte, isOriginal bool) {
 		Data:      &data,
 		republish: time.Now().Add(tRepublish * time.Second),
 		replicate: time.Now().Add(tReplicate * time.Second),
-		expire:    time.Now().Add(tExpire * time.Second),
+		expire:    time.Now().Add(time.Duration(expire) * time.Second),
 		isOG:      isOriginal,
 	}
 }
 
-func (store *InMemoryStore) Get(hash string) (*[]byte, bool) {
+func (store *InMemoryStore) GetFileObject(hash string) (*File, bool) {
+	store.mutex.Lock()
+	defer store.mutex.Unlock()
+
+	s := store.files
+	file, ok := s[hash]
+
+	if !ok {
+		return nil, false
+	}
+
+	return file, ok
+}
+
+func (store *InMemoryStore) GetData(hash string) (*[]byte, bool) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
@@ -88,14 +102,14 @@ func (store *InMemoryStore) Delete(hash string) {
 	delete(store.files, hash)
 }
 
-func (store *InMemoryStore) GetKeysForReplicate() []string {
+func (store *InMemoryStore) GetKeysForReplicate() map[string]*File {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
-	temp := make([]string, 0)
+	temp := make(map[string]*File)
 	for key, value := range store.files {
 		if time.Now().After(value.replicate) && !value.isOG {
-			_ = append(temp, key)
+			temp[key] = store.files[key]
 		}
 	}
 
@@ -121,7 +135,7 @@ func (store *InMemoryStore) DeleteExpiredData() {
 	defer store.mutex.Unlock()
 
 	for key, value := range store.files {
-		if time.Now().After(value.expire) && !value.isOG {
+		if time.Now().After(value.expire) {
 			delete(store.files, key)
 		}
 	}
@@ -132,4 +146,16 @@ func (store *InMemoryStore) UpdateReplicateTime(hash string) {
 	defer store.mutex.Unlock()
 
 	store.files[hash].replicate = time.Now().Add(tReplicate * time.Second)
+}
+
+func (store *InMemoryStore) Update(hash string, data []byte, isOG bool, expire, replicate, republish time.Time) {
+	store.mutex.Lock()
+	defer store.mutex.Unlock()
+
+	store.files[hash].Data = &data
+	store.files[hash].isOG = isOG
+	store.files[hash].expire = expire
+	store.files[hash].replicate = expire
+	store.files[hash].republish = expire
+
 }

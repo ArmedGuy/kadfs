@@ -201,7 +201,7 @@ func TestKademliaStoreAndFindValue(t *testing.T) {
 	fileContent := []byte{1, 2, 3, 4, 5, 1, 3, 3, 7}
 
 	// Store file
-	n := firstNode.Store(fileHashString, fileContent)
+	n := firstNode.Store(fileHashString, fileContent, true, tExpire)
 	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent, n)
 
 	if n > K {
@@ -266,7 +266,7 @@ func TestKademliaStoreAndFindOtherValue(t *testing.T) {
 	fileContent := []byte{1, 2, 3, 4, 5, 1, 3, 3, 7}
 
 	// Store file
-	n := firstNode.Store(fileHashString, fileContent)
+	n := firstNode.Store(fileHashString, fileContent, true, tExpire)
 	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent, n)
 
 	if n > K {
@@ -310,7 +310,7 @@ func TestKademliaStoreOverwrite(t *testing.T) {
 	fileContent1 := []byte{1, 2, 3, 4, 5, 1, 3, 3, 7}
 
 	// Store file
-	n := firstNode.Store(fileHashString, fileContent1)
+	n := firstNode.Store(fileHashString, fileContent1, true, tExpire)
 	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent1, n)
 
 	if n > K {
@@ -325,7 +325,7 @@ func TestKademliaStoreOverwrite(t *testing.T) {
 	fileContent2 := []byte{7, 3, 2, 1, 0}
 
 	// Store second file
-	n = firstNode.Store(fileHashString, fileContent2)
+	n = firstNode.Store(fileHashString, fileContent2, true, tExpire)
 	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent2, n)
 
 	if n > K {
@@ -389,4 +389,126 @@ func TestKademliaFindNodePanic(t *testing.T) {
 func TestKademliaFindNodeTimeouts(t *testing.T) {
 	// Create 20 nodes, and disable a few of them
 	// FindNode should only return (20 - disabled) nodes
+}
+
+func TestKademliaExpireTimer(t *testing.T) {
+	testnet := createKademliaNetwork(100, true)
+	firstNode := testnet.nodelist[0]
+
+	// Create file to store
+	hash1 := sha1.New()
+	hash1.Write([]byte("some/file/path/file.ext"))
+	fileHashString := hex.EncodeToString(hash1.Sum(nil))
+	fileContent1 := []byte{1, 2, 3, 4, 5, 1, 3, 3, 7}
+
+	// Store file
+	n := firstNode.Store(fileHashString, fileContent1, true, 0)
+
+	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent1, n)
+
+	if n > K {
+		log.Fatal("ERROR TestKademliaStoreOverwrite: File stored on too many nodes")
+	}
+
+	// Sleep for propagation
+	fmt.Println("Sleeping for 1 secs")
+	time.Sleep(1 * time.Second)
+
+	// Should only expire the file on this node (thus if running findValue it should find a value somewhere in the network)
+	firstNode.Expire()
+
+	file, ok := firstNode.FileMemoryStore.GetData(fileHashString)
+	log.Printf("FIND_VALUE returned %v with file content: %v\n", ok, file)
+
+	if ok {
+		log.Fatal("Found a expired piece of data on firstNode")
+	}
+
+}
+
+func TestKademliaRepublishTimer(t *testing.T) {
+	testnet := createKademliaNetwork(20, true)
+	firstNode := testnet.nodelist[15]
+
+	// Create file to store
+	hash1 := sha1.New()
+	hash1.Write([]byte("some/file/path/file.ext"))
+	fileHashString := hex.EncodeToString(hash1.Sum(nil))
+	fileContent1 := []byte{1, 2, 3, 4, 5, 1, 3, 3, 7}
+
+	// Store file
+	n := firstNode.Store(fileHashString, fileContent1, true, 0)
+
+	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent1, n)
+
+	if n > K {
+		log.Fatal("ERROR TestKademliaStoreOverwrite: File stored on too many nodes")
+	}
+
+	// Sleep for propagation
+	fmt.Println("Sleeping for 1 secs")
+	time.Sleep(1 * time.Second)
+
+	secondNode := testnet.nodelist[1]
+	file, _ := secondNode.FileMemoryStore.GetFileObject(fileHashString)
+
+	time.Sleep(1 * time.Second)
+
+	firstNode.FileMemoryStore.Update(fileHashString, fileContent1, true, time.Now(), time.Now(), time.Now())
+	secondNode.FileMemoryStore.Update(fileHashString, fileContent1, false, time.Now(), time.Now(), time.Now())
+
+	firstNode.Republish()
+
+	time.Sleep(1 * time.Second)
+
+	file1, _ := firstNode.FileMemoryStore.GetFileObject(fileHashString)
+	file2, _ := secondNode.FileMemoryStore.GetFileObject(fileHashString)
+
+	if file.republish != file2.republish {
+		log.Fatalf("Node 1 and Node 2 have different republish times. Node1: %v, Node2: %v", file1.republish, file2.republish)
+	}
+}
+
+func TestKademliaReplicateTimer(t *testing.T) {
+	testnet := createKademliaNetwork(20, true)
+	firstNode := testnet.nodelist[15]
+
+	// Create file to store
+	hash1 := sha1.New()
+	hash1.Write([]byte("some/file/path/file.ext"))
+	fileHashString := hex.EncodeToString(hash1.Sum(nil))
+	fileContent1 := []byte{1, 2, 3, 4, 5, 1, 3, 3, 7}
+
+	// Store file
+	n := firstNode.Store(fileHashString, fileContent1, true, 0)
+
+	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent1, n)
+
+	if n > K {
+		log.Fatal("ERROR TestKademliaStoreOverwrite: File stored on too many nodes")
+	}
+
+	// Sleep for propagation
+	fmt.Println("Sleeping for 1 secs")
+	time.Sleep(1 * time.Second)
+
+	secondNode := testnet.nodelist[1]
+	file, _ := secondNode.FileMemoryStore.GetFileObject(fileHashString)
+
+	time.Sleep(1 * time.Second)
+
+	firstNode.FileMemoryStore.Update(fileHashString, fileContent1, true, time.Now(), time.Now(), time.Now())
+	secondNode.FileMemoryStore.Update(fileHashString, fileContent1, false, time.Now(), time.Now(), time.Now())
+
+	secondNode.Replicate()
+
+	time.Sleep(1 * time.Second)
+
+	file1, _ := firstNode.FileMemoryStore.GetFileObject(fileHashString)
+	file2, _ := secondNode.FileMemoryStore.GetFileObject(fileHashString)
+
+	if file.replicate != file2.replicate {
+		log.Fatalf("Node 1 and Node 2 have different republish times. Node1: %v, Node2: %v", file1.republish, file2.republish)
+	}
+
 }
