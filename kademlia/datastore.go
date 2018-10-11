@@ -53,9 +53,17 @@ func (store *InMemoryStore) Put(hash string, data []byte, isOriginal bool, expir
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
+	var republish time.Time
+
+	if isOriginal {
+		republish = time.Now().Add(tRepublish * time.Second)
+	} else {
+		republish = time.Now().Add(tReplicate * time.Second)
+	}
+
 	store.files[hash] = &File{
 		Data:      &data,
-		republish: time.Now().Add(tRepublish * time.Second),
+		republish: republish,
 		expire:    time.Now().Add(time.Duration(expire) * time.Second),
 		isOG:      isOriginal,
 	}
@@ -141,9 +149,14 @@ func (store *InMemoryStore) Update(hash string, data []byte, isOG bool, expire, 
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
-	store.files[hash].Data = &data
-	store.files[hash].isOG = isOG
-	store.files[hash].expire = expire
-	store.files[hash].republish = republish
+	s := store.files
+	file, ok := s[hash]
+
+	if ok {
+		file.Data = &data
+		file.isOG = isOG
+		file.expire = expire
+		file.republish = republish
+	}
 
 }

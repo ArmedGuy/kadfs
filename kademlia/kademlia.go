@@ -301,13 +301,12 @@ func (kademlia *Kademlia) Replicate() {
 		for _, contact := range closest {
 			if kademlia.Network.GetLocalContact().ID.Equals(contact.ID) {
 				iAmInClosest = true
+				break
 			}
 		}
 
 		if iAmInClosest {
 			// update time
-			log.Printf("[INFO] Updating replicate time with key: %v\n", key)
-			go kademlia.FileMemoryStore.Update(key, *value.Data, false, time.Now().Add(tReplicate*time.Second), time.Now().Add(tReplicate*time.Second))
 			go kademlia.Store(key, *value.Data, false, tReplicate)
 		} else {
 			log.Printf("[INFO] Deleting data with key: %v\n", key)
