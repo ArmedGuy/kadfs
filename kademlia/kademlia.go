@@ -237,6 +237,7 @@ func (kademlia *Kademlia) FindValue(hash string) ([]byte, bool) { // Return File
 func (kademlia *Kademlia) Store(hash string, data []byte) int {
 	reschan := make(chan bool)
 	closest := kademlia.FindNode(NewKademliaID(hash))
+	clientsToHandle := len(closest)
 
 	kademlia.FileMemoryStore.Put(hash, data, true)
 
@@ -244,10 +245,10 @@ func (kademlia *Kademlia) Store(hash string, data []byte) int {
 		if node.ID != kademlia.Network.GetLocalContact().ID {
 			n := node
 			go kademlia.Network.SendStoreMessage(&n, hash, data, reschan)
+		} else {
+			clientsToHandle--
 		}
 	}
-
-	clientsToHandle := len(closest)
 
 	responseAmount := 0
 

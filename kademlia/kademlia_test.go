@@ -385,8 +385,3 @@ func TestKademliaFindNodePanic(t *testing.T) {
 	}
 
 }
-
-func TestKademliaFindNodeTimeouts(t *testing.T) {
-	// Create 20 nodes, and disable a few of them
-	// FindNode should only return (20 - disabled) nodes
-}
