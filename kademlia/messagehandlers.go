@@ -86,11 +86,20 @@ func (network *Network) registerMessageHandlers() {
 			// Ok we have the file, check if old.expire is before req.expire
 			expireTimer := time.Now().Add(time.Duration(req.Expire) * time.Second)
 
+			var republishTime time.Time
+
+			if old.isOG {
+				republishTime = time.Now().Add(tRepublish * time.Second)
+			} else {
+				republishTime = time.Now().Add(tReplicate * time.Second)
+			}
+
 			if old.expire.Before(expireTimer) {
 				// If it is, update the expire time to req.Expire
-				network.kademlia.FileMemoryStore.Update(req.Hash, req.Data, old.isOG, expireTimer, time.Now().Add(tReplicate*time.Second), time.Now().Add(tRepublish*time.Second))
+				network.kademlia.FileMemoryStore.Update(req.Hash, req.Data, old.isOG, expireTimer, republishTime)
 			} else {
-				network.kademlia.FileMemoryStore.Update(req.Hash, req.Data, old.isOG, old.expire, time.Now().Add(tReplicate*time.Second), time.Now().Add(tRepublish*time.Second))
+				// Here since we might overrite data on nodes using store
+				network.kademlia.FileMemoryStore.Update(req.Hash, req.Data, old.isOG, old.expire, old.republish)
 			}
 
 		} else {

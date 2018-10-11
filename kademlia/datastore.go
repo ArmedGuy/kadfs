@@ -7,8 +7,6 @@ import (
 	"time"
 )
 
-// Real constants. Where do i use tRepublish and where do i use tReplicate?
-// What is the difference?
 const tReplicate = 3600
 const tRepublish = 86400
 const tExpire = 86400
@@ -28,7 +26,6 @@ type InMemoryStore struct {
 }
 
 type File struct {
-	replicate time.Time
 	expire    time.Time
 	republish time.Time
 	Data      *[]byte
@@ -59,7 +56,6 @@ func (store *InMemoryStore) Put(hash string, data []byte, isOriginal bool, expir
 	store.files[hash] = &File{
 		Data:      &data,
 		republish: time.Now().Add(tRepublish * time.Second),
-		replicate: time.Now().Add(tReplicate * time.Second),
 		expire:    time.Now().Add(time.Duration(expire) * time.Second),
 		isOG:      isOriginal,
 	}
@@ -102,13 +98,13 @@ func (store *InMemoryStore) Delete(hash string) {
 	delete(store.files, hash)
 }
 
-func (store *InMemoryStore) GetKeysForReplicate() map[string]*File {
+func (store *InMemoryStore) GetKeysAndValueForReplicate() map[string]*File {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
 	temp := make(map[string]*File)
 	for key, value := range store.files {
-		if time.Now().After(value.replicate) && !value.isOG {
+		if time.Now().After(value.republish) && !value.isOG {
 			temp[key] = store.files[key]
 		}
 	}
@@ -141,21 +137,13 @@ func (store *InMemoryStore) DeleteExpiredData() {
 	}
 }
 
-func (store *InMemoryStore) UpdateReplicateTime(hash string) {
-	store.mutex.Lock()
-	defer store.mutex.Unlock()
-
-	store.files[hash].replicate = time.Now().Add(tReplicate * time.Second)
-}
-
-func (store *InMemoryStore) Update(hash string, data []byte, isOG bool, expire, replicate, republish time.Time) {
+func (store *InMemoryStore) Update(hash string, data []byte, isOG bool, expire, republish time.Time) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
 	store.files[hash].Data = &data
 	store.files[hash].isOG = isOG
 	store.files[hash].expire = expire
-	store.files[hash].replicate = replicate
 	store.files[hash].republish = republish
 
 }

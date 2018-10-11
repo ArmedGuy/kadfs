@@ -453,8 +453,8 @@ func TestKademliaRepublishTimer(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	firstNode.FileMemoryStore.Update(fileHashString, fileContent1, true, time.Now(), time.Now(), time.Now())
-	secondNode.FileMemoryStore.Update(fileHashString, fileContent1, false, time.Now(), time.Now(), time.Now())
+	firstNode.FileMemoryStore.Update(fileHashString, fileContent1, true, time.Now(), time.Now())
+	secondNode.FileMemoryStore.Update(fileHashString, fileContent1, false, time.Now(), time.Now())
 
 	firstNode.Republish()
 
@@ -495,8 +495,8 @@ func TestKademliaReplicateTimer(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	firstNode.FileMemoryStore.Update(fileHashString, fileContent1, true, time.Now(), time.Now(), time.Now())
-	secondNode.FileMemoryStore.Update(fileHashString, fileContent1, false, time.Now(), time.Now(), time.Now())
+	firstNode.FileMemoryStore.Update(fileHashString, fileContent1, true, time.Now(), time.Now())
+	secondNode.FileMemoryStore.Update(fileHashString, fileContent1, false, time.Now(), time.Now())
 
 	secondNode.Replicate()
 
@@ -505,7 +505,7 @@ func TestKademliaReplicateTimer(t *testing.T) {
 	file1, _ := firstNode.FileMemoryStore.GetFileObject(fileHashString)
 	file2, _ := secondNode.FileMemoryStore.GetFileObject(fileHashString)
 
-	if file1.replicate != file2.replicate {
+	if file1.republish != file2.republish {
 		log.Fatalf("Node 1 and Node 2 have different republish times. Node1: %v, Node2: %v", file1.republish, file2.republish)
 	}
 

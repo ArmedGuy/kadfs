@@ -292,7 +292,7 @@ func (kademlia *Kademlia) Republish() {
 }
 
 func (kademlia *Kademlia) Replicate() {
-	m := kademlia.FileMemoryStore.GetKeysForReplicate()
+	m := kademlia.FileMemoryStore.GetKeysAndValueForReplicate()
 
 	for key, value := range m {
 		closest := kademlia.FindNode(NewKademliaID(key))
@@ -307,7 +307,7 @@ func (kademlia *Kademlia) Replicate() {
 		if iAmInClosest {
 			// update time
 			log.Printf("[INFO] Updating replicate time with key: %v\n", key)
-			go kademlia.FileMemoryStore.UpdateReplicateTime(key)
+			go kademlia.FileMemoryStore.Update(key, *value.Data, false, time.Now().Add(tReplicate*time.Second), time.Now().Add(tReplicate*time.Second))
 			go kademlia.Store(key, *value.Data, false, tReplicate)
 		} else {
 			log.Printf("[INFO] Deleting data with key: %v\n", key)
