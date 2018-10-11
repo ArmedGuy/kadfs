@@ -19,6 +19,7 @@ type KademliaNetwork interface {
 	SendFindNodeMessage(*Contact, *KademliaID, chan *LookupResponse)
 	SendFindValueMessage(*Contact, string, chan *FindValueResponse)
 	SendStoreMessage(*Contact, string, []byte, chan bool)
+	SendDeleteMessage(*Contact, string, chan bool)
 	SetRequestHandler(string, func(*Contact, *RPCMessage))
 	SetState(*Kademlia)
 }
@@ -265,6 +266,37 @@ func (network *Network) SendStoreMessage(contact *Contact, hash string, data []b
 	network.lock.Unlock()
 	network.Transport.SendRPCMessage(contact, rpc)
 
+}
+
+func (network *Network) SendDeleteMessage(contact *Contact, hash string, reschan chan bool) {
+	rpc := network.NewRPC(contact, "DELETE")
+	messageID := rpc.GetMessageId()
+
+	payload := new(message.DeleteValueRequest)
+	payload.Hash = hash
+
+	rpc.SetPayloadFromMessage(payload)
+
+	network.lock.Lock()
+
+	// Callback for this message, just add the bool from response into reschan
+	network.Responses[messageID] = func(sender *Contact, rpc *RPCMessage) {
+
+		// Get response message
+		responseMessage := new(message.DeleteValueResponse)
+		rpc.GetMessageFromPayload(responseMessage)
+
+		select {
+		case reschan <- responseMessage.Deleted: // Add true/false into reschan depending on if file was deleted from node or not
+			break
+		case <-time.After(5 * time.Second):
+			break
+		}
+	}
+
+	// Unlock and send message
+	network.lock.Unlock()
+	network.Transport.SendRPCMessage(contact, rpc)
 }
 
 type RPCMessage struct {

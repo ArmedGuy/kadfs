@@ -81,11 +81,21 @@ func (store *InMemoryStore) Get(hash string) (*[]byte, bool) {
 	return file, true
 }
 
-func (store *InMemoryStore) Delete(hash string) {
+func (store *InMemoryStore) Delete(hash string) bool {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
-	delete(store.files, hash)
+	// First, check if we even have the file
+	s := store.files
+	_, ok := s[hash]
+
+	// Delete if we have the file, else return false
+	if !ok {
+		return false
+	} else {
+		delete(store.files, hash)
+		return true
+	}
 }
 
 func (store *InMemoryStore) GetKeysForReplicate() []string {

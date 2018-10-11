@@ -238,7 +238,11 @@ func (kademlia *Kademlia) Store(hash string, data []byte) int {
 	reschan := make(chan bool)
 	closest := kademlia.FindNode(NewKademliaID(hash))
 
+	// Save on how many nodes we store this file
+	storeAmount := 0
+
 	kademlia.FileMemoryStore.Put(hash, data, true)
+	storeAmount++ // We store the file on this node
 
 	for _, node := range closest {
 		if node.ID != kademlia.Network.GetLocalContact().ID {
@@ -249,19 +253,55 @@ func (kademlia *Kademlia) Store(hash string, data []byte) int {
 
 	clientsToHandle := len(closest)
 
-	responseAmount := 0
-
 	for clientsToHandle > 0 {
 		select {
 		case <-reschan:
-			responseAmount++
+			storeAmount++
 		case <-time.After(5 * time.Second):
 			break
 		}
 		clientsToHandle--
 	}
-	return responseAmount
+	return storeAmount
 
+}
+
+func (kademlia *Kademlia) DeleteValue(hash string) int {
+	deleteAmount := 0
+
+	// Delete the file from this node
+	ok := kademlia.FileMemoryStore.Delete(hash)
+	if ok {
+		deleteAmount++
+	}
+
+	// Delete from K closest nodes
+	reschan := make(chan bool)
+	closest := kademlia.FindNode(NewKademliaID(hash))
+	for _, node := range closest {
+		if node.ID != kademlia.Network.GetLocalContact().ID {
+			n := node
+			go kademlia.Network.SendDeleteMessage(&n, hash, reschan)
+		}
+	}
+
+	// Check responses
+	clientsToHandle := len(closest)
+
+	for clientsToHandle > 0 {
+		select {
+		case response := <-reschan:
+			if response {
+				deleteAmount++
+			}
+		case <-time.After(5 * time.Second):
+			break
+		}
+		clientsToHandle--
+	}
+
+	// return number of nodes file was deleted from
+	return deleteAmount
 }
 
 func (kademlia *Kademlia) Ping(contact *Contact) bool {

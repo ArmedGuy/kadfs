@@ -204,8 +204,8 @@ func TestKademliaStoreAndFindValue(t *testing.T) {
 	n := firstNode.Store(fileHashString, fileContent)
 	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent, n)
 
-	if n > K {
-		log.Fatal("ERROR TestKademliaStoreAndFindValue: File stored on too many nodes")
+	if n > K+1 {
+		log.Fatalf("ERROR TestKademliaStoreAndFindValue: File should be stored on a maximum of %v nodes but was reported stored on %v nodes\n", K, n)
 	}
 
 	// Sleep for propagation
@@ -269,8 +269,8 @@ func TestKademliaStoreAndFindOtherValue(t *testing.T) {
 	n := firstNode.Store(fileHashString, fileContent)
 	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent, n)
 
-	if n > K {
-		log.Fatal("ERROR TestKademliaStoreAndFindOtherValue: File stored on too many nodes")
+	if n > K+1 {
+		log.Fatalf("ERROR TestKademliaStoreAndFindOtherValue: File should be stored on a maximum of %v nodes but was reported stored on %v nodes\n", K, n)
 	}
 
 	// Sleep for propagation
@@ -313,8 +313,8 @@ func TestKademliaStoreOverwrite(t *testing.T) {
 	n := firstNode.Store(fileHashString, fileContent1)
 	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent1, n)
 
-	if n > K {
-		log.Fatal("ERROR TestKademliaStoreOverwrite: File stored on too many nodes")
+	if n > K+1 {
+		log.Fatalf("ERROR TestKademliaStoreOverwrite: File should be stored on a maximum of %v nodes but was reported stored on %v nodes\n", K, n)
 	}
 
 	// Sleep for propagation
@@ -328,8 +328,8 @@ func TestKademliaStoreOverwrite(t *testing.T) {
 	n = firstNode.Store(fileHashString, fileContent2)
 	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent2, n)
 
-	if n > K {
-		log.Fatal("ERROR TestKademliaStoreOverwrite: File stored on too many nodes")
+	if n > K+1 {
+		log.Fatalf("ERROR TestKademliaStoreOverwrite: File should be stored on a maximum of %v nodes but was reported stored on %v nodes\n", K, n)
 	}
 
 	// Sleep for propagation
@@ -359,7 +359,6 @@ func TestKademliaFindNodePanic(t *testing.T) {
 		node := createKademliaNode(id, 1+i, testnet)
 		testnet.addToNetwork(node)
 		testnet.origin.RoutingTable.AddContact(*node.Network.GetLocalContact())
-
 	}
 
 	panicId := nextKademliaID()
@@ -389,4 +388,94 @@ func TestKademliaFindNodePanic(t *testing.T) {
 func TestKademliaFindNodeTimeouts(t *testing.T) {
 	// Create 20 nodes, and disable a few of them
 	// FindNode should only return (20 - disabled) nodes
+}
+
+func TestKademliaStoreAndDelete(t *testing.T) {
+	testnet := createKademliaNetwork(50, true)
+
+	// Use this node to send STORE RPC to
+	firstNode := testnet.nodelist[3]
+
+	// Use this node to send DELETE RPC to
+	//otherNode := testnet.nodelist[18]
+
+	// Use this node to send FIND_VALUE RPC to
+	thirdNode := testnet.nodelist[42]
+
+	// Create file to store
+	hash1 := sha1.New()
+	hash1.Write([]byte("some/file/path/file.ext"))
+	fileHashString := hex.EncodeToString(hash1.Sum(nil))
+	fileContent := []byte{1, 2, 3, 4, 5, 1, 3, 3, 7}
+
+	// Store file
+	n1 := firstNode.Store(fileHashString, fileContent)
+	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent, n1)
+
+	if n1 > K+1 {
+		log.Fatalf("ERROR TestKademliaStoreAndDelete: File should be stored on a maximum of %v nodes but was reported stored on %v nodes\n", K, n1)
+	}
+
+	// Sleep for propagation
+	fmt.Println("Sleeping for 5 secs")
+	time.Sleep(6 * time.Second)
+
+	//n2 := otherNode.DeleteValue(fileHashString)
+
+	// File should be deleted from the same amount of nodes as the file was stored on!
+	//if n2 != n1 || n2 != n1-1 {
+	//	log.Fatalf("ERROR TestKademliaStoreAndDelete: File should be deleted from %v nodes but was actually deleted from %v nodes\n", n1, n2)
+	//}
+
+	// Sleep for propagation
+	fmt.Println("Sleeping for 5 secs")
+	time.Sleep(6 * time.Second)
+
+	// Send FIND_VALUE
+	_, ok := thirdNode.FindValue(fileHashString)
+	if ok {
+		log.Fatal("ERROR TestKademliaStoreAndDelete: Find Value returned true for a file that should have been deleted from the network!")
+	}
+}
+
+func TestKademliaStoreAndDeleteOnTheSameNode(t *testing.T) {
+	testnet := createKademliaNetwork(50, true)
+
+	// Use this node to for all communication
+	onlyNode := testnet.nodelist[0]
+
+	// Create file to store
+	hash1 := sha1.New()
+	hash1.Write([]byte("some/file/path/file.ext"))
+	fileHashString := hex.EncodeToString(hash1.Sum(nil))
+	fileContent := []byte{1, 2, 3, 4, 5, 1, 3, 3, 7}
+
+	// Store file
+	n1 := onlyNode.Store(fileHashString, fileContent)
+	log.Printf("Stored file %v with content %v on %v number of responding nodes\n", fileHashString, fileContent, n1)
+
+	if n1 > K+1 {
+		log.Fatalf("ERROR TestKademliaStoreAndDeleteOnTheSameNode: File should be stored on a maximum of %v nodes but was reported stored on %v nodes\n", K, n1)
+	}
+
+	// Sleep for propagation
+	fmt.Println("Sleeping for 5 secs")
+	time.Sleep(5 * time.Second)
+
+	n2 := onlyNode.DeleteValue(fileHashString)
+
+	// File should be deleted from the same amount of nodes as the file was stored on!
+	if n2 != n1 {
+		log.Fatalf("ERROR TestKademliaStoreAndDeleteOnTheSameNode: File should be deleted from %v nodes but was actually deleted from %v nodes\n", n1, n2)
+	}
+
+	// Sleep for propagation
+	fmt.Println("Sleeping for 5 secs")
+	time.Sleep(5 * time.Second)
+
+	// Send FIND_VALUE
+	_, ok := onlyNode.FindValue(fileHashString)
+	if ok {
+		log.Fatal("ERROR TestKademliaStoreAndDeleteOnTheSameNode: Find Value returned true for a file that should have been deleted from the network!")
+	}
 }

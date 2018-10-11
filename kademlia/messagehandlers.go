@@ -83,4 +83,29 @@ func (network *Network) registerMessageHandlers() {
 		resRPC := rpc.GetResponse()
 		network.Transport.SendRPCMessage(sender, resRPC)
 	})
+
+	network.SetRequestHandler("DELETE", func(sender *Contact, rpc *RPCMessage) {
+		req := new(message.DeleteValueRequest)
+		rpc.GetMessageFromPayload(req)
+
+		log.Printf("[INFO] MessageHandlers Delete: Got DELETE message for file %v on node %v\n", req.Hash, network.kademlia.Network.GetLocalContact().ID)
+
+		fileWasDeleted := network.kademlia.FileMemoryStore.Delete(req.Hash)
+
+		resRPC := rpc.GetResponse()
+
+		// Here we need to create a DeletResponse and add as payload to resRPC
+		res := new(message.DeleteValueResponse)
+		if fileWasDeleted {
+			// Respond with true
+			res.Deleted = true
+			log.Printf("[INFO] MessageHandlers Delete: File %v was successfully deleted from node %v\n", req.Hash, network.kademlia.Network.GetLocalContact().ID)
+		} else {
+			// Respond with false
+			log.Printf("[INFO] MessageHandlers Delete: File %v could not be deleted from node %v\n", req.Hash, network.kademlia.Network.GetLocalContact().ID)
+			res.Deleted = false
+		}
+		resRPC.SetPayloadFromMessage(res)
+		network.Transport.SendRPCMessage(sender, resRPC)
+	})
 }

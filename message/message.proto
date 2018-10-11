@@ -28,6 +28,14 @@ message FindValueResponse {
     repeated Contact Contacts = 3;
 }
 
+message DeleteValueRequest {
+    string Hash = 1;
+}
+
+message DeleteValueResponse {
+    bool Deleted = 1;
+}
+
 message SendDataMessage {
     bytes Data = 1;
     string Hash = 2;
