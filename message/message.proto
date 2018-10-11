@@ -25,7 +25,8 @@ message FindValueRequest {
 message FindValueResponse {
     bool HasData = 1;
     bytes Data = 2;
-    repeated Contact Contacts = 3;
+    Contact OriginalPublisher = 3;
+    repeated Contact Contacts = 4;
 }
 
 message DeleteValueRequest {
@@ -37,8 +38,10 @@ message DeleteValueResponse {
 }
 
 message SendDataMessage {
-    bytes Data = 1;
-    string Hash = 2;
+    string OriginalPublisherID = 1;
+    string OriginalPublisherAddr = 2;
+    bytes Data = 3;
+    string Hash = 4;
 }
 
 message FindNodeRequest {

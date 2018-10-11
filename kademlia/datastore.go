@@ -28,11 +28,12 @@ type InMemoryStore struct {
 }
 
 type File struct {
-	replicate time.Time
-	expire    time.Time
-	republish time.Time
-	Data      *[]byte
-	isOG      bool
+	OriginalPublisher *Contact
+	replicate         time.Time
+	expire            time.Time
+	republish         time.Time
+	Data              *[]byte
+	isOG              bool
 }
 
 func NewInMemoryStore() *InMemoryStore {
@@ -52,16 +53,17 @@ func HashToKademliaID(hash string) *KademliaID {
 	return NewKademliaID(hash)
 }
 
-func (store *InMemoryStore) Put(hash string, data []byte, isOriginal bool) {
+func (store *InMemoryStore) Put(originalPublisher *Contact, hash string, data []byte, isOriginal bool) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
 	store.files[hash] = &File{
-		Data:      &data,
-		republish: time.Now().Add(tRepublish * time.Second),
-		replicate: time.Now().Add(tReplicate * time.Second),
-		expire:    time.Now().Add(tExpire * time.Second),
-		isOG:      isOriginal,
+		OriginalPublisher: originalPublisher,
+		Data:              &data,
+		republish:         time.Now().Add(tRepublish * time.Second),
+		replicate:         time.Now().Add(tReplicate * time.Second),
+		expire:            time.Now().Add(tExpire * time.Second),
+		isOG:              isOriginal,
 	}
 }
 
@@ -81,6 +83,21 @@ func (store *InMemoryStore) Get(hash string) (*[]byte, bool) {
 	return file, true
 }
 
+func (store *InMemoryStore) GetEntireFile(hash string) (*File, bool) {
+	store.mutex.Lock()
+	defer store.mutex.Unlock()
+
+	s := store.files
+	s1, ok := s[hash]
+
+	// No file found, return errrrrr
+	if !ok {
+		return nil, false
+	}
+
+	return s1, true
+}
+
 func (store *InMemoryStore) Delete(hash string) bool {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
@@ -92,10 +109,10 @@ func (store *InMemoryStore) Delete(hash string) bool {
 	// Delete if we have the file, else return false
 	if !ok {
 		return false
-	} else {
-		delete(store.files, hash)
-		return true
 	}
+
+	delete(store.files, hash)
+	return true
 }
 
 func (store *InMemoryStore) GetKeysForReplicate() []string {

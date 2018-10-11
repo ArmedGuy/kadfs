@@ -114,14 +114,14 @@ func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
 	}
 }
 
-func (kademlia *Kademlia) FindValue(hash string) ([]byte, bool) { // Return File and a bool indicating error (file not found?)
+func (kademlia *Kademlia) FindValue(hash string) ([]byte, *Contact, bool) { // Return File and a bool indicating error (file not found?)
 	// Before we do anything, we check if we have the file
 	log.Printf("[INFO] Kademlia FindValue: Searching for file in local storage\n")
-	file, ok := kademlia.FileMemoryStore.Get(hash)
+	file, ok := kademlia.FileMemoryStore.GetEntireFile(hash)
 	log.Printf("[INFO] Kademlia FindValue: Local file status: %v, File: %v\n", ok, file)
 
 	if ok {
-		return *file, true
+		return *file.Data, file.OriginalPublisher, true
 	}
 
 	// Variables needed for the FindFile procedure
@@ -146,7 +146,7 @@ func (kademlia *Kademlia) FindValue(hash string) ([]byte, bool) { // Return File
 			log.Println("[INFO] kademlia FindValue: Found no contacts to send FindValue request to")
 
 			// RETURN: What should be returned if no file is found?
-			return nil, false
+			return nil, nil, false
 		}
 
 		if !changed {
@@ -156,7 +156,7 @@ func (kademlia *Kademlia) FindValue(hash string) ([]byte, bool) { // Return File
 				// Panic already sent
 
 				// RETURN: What should be returned if no file is found?
-				return nil, false
+				return nil, nil, false
 			}
 
 			// Set panic
@@ -188,7 +188,7 @@ func (kademlia *Kademlia) FindValue(hash string) ([]byte, bool) { // Return File
 
 				// Did we get the file back?
 				if response.HasFile {
-					return *response.File.Data, true // WIN WIN, WE FOUND THE FILE!!!!!!!!!!!!
+					return *response.File.Data, response.File.OriginalPublisher, true // WIN WIN, WE FOUND THE FILE!!!!!!!!!!!!
 				} else {
 					// We did not get any file back...
 					// Append all contacts (exactly the same as in FindNode)
@@ -223,7 +223,7 @@ func (kademlia *Kademlia) FindValue(hash string) ([]byte, bool) { // Return File
 		// calculate if best candidates have changed or not
 		newClosest := candidates.GetAvailableContacts(1)
 		if len(newClosest) == 0 {
-			return nil, false // No available contacts left...
+			return nil, nil, false // No available contacts left...
 		}
 		newClosestID := newClosest[0].ID
 		changed = false
@@ -235,19 +235,23 @@ func (kademlia *Kademlia) FindValue(hash string) ([]byte, bool) { // Return File
 }
 
 func (kademlia *Kademlia) Store(hash string, data []byte) int {
-	reschan := make(chan bool)
-	closest := kademlia.FindNode(NewKademliaID(hash))
-
 	// Save on how many nodes we store this file
 	storeAmount := 0
 
-	kademlia.FileMemoryStore.Put(hash, data, true)
-	storeAmount++ // We store the file on this node
+	// Get this node
+	thisNode := kademlia.Network.GetLocalContact()
+
+	// Store the file on this node
+	kademlia.FileMemoryStore.Put(thisNode, hash, data, true)
+	storeAmount++
+
+	reschan := make(chan bool)
+	closest := kademlia.FindNode(NewKademliaID(hash))
 
 	for _, node := range closest {
-		if node.ID != kademlia.Network.GetLocalContact().ID {
+		if node.ID != thisNode.ID {
 			n := node
-			go kademlia.Network.SendStoreMessage(&n, hash, data, reschan)
+			go kademlia.Network.SendStoreMessage(thisNode, &n, hash, data, reschan)
 		}
 	}
 
@@ -267,17 +271,32 @@ func (kademlia *Kademlia) Store(hash string, data []byte) int {
 }
 
 func (kademlia *Kademlia) DeleteValue(hash string) int {
+	// Resources needed
+	reschan := make(chan bool)
+	closest := kademlia.FindNode(NewKademliaID(hash))
 	deleteAmount := 0
 
+	// Do a FIND_VALUE to get the original publisher
+	_, OGPublisher, foundOk := kademlia.FindValue(hash)
+	if foundOk {
+		isInList := false
+		for _, c := range closest {
+			if c.ID.String() == OGPublisher.ID.String() || c.Address == OGPublisher.Address {
+				isInList = true
+			}
+		}
+		if !isInList {
+			closest = append(closest, *OGPublisher)
+		}
+	}
+
 	// Delete the file from this node
-	ok := kademlia.FileMemoryStore.Delete(hash)
-	if ok {
+	delOk := kademlia.FileMemoryStore.Delete(hash)
+	if delOk {
 		deleteAmount++
 	}
 
-	// Delete from K closest nodes
-	reschan := make(chan bool)
-	closest := kademlia.FindNode(NewKademliaID(hash))
+	// Delete from K closest nodes + the original publisher node
 	for _, node := range closest {
 		if node.ID != kademlia.Network.GetLocalContact().ID {
 			n := node

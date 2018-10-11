@@ -18,7 +18,7 @@ type KademliaNetwork interface {
 	SendPingMessage(*Contact, chan bool)
 	SendFindNodeMessage(*Contact, *KademliaID, chan *LookupResponse)
 	SendFindValueMessage(*Contact, string, chan *FindValueResponse)
-	SendStoreMessage(*Contact, string, []byte, chan bool)
+	SendStoreMessage(*Contact, *Contact, string, []byte, chan bool)
 	SendDeleteMessage(*Contact, string, chan bool)
 	SetRequestHandler(string, func(*Contact, *RPCMessage))
 	SetState(*Kademlia)
@@ -217,8 +217,10 @@ func (network *Network) SendFindValueMessage(contact *Contact, hash string, resc
 
 		// Wohoo, we got the file!
 		if responseMessage.HasData {
+			ogContact := NewContact(NewKademliaID(responseMessage.OriginalPublisher.ID), responseMessage.OriginalPublisher.Address)
 			findValueResponse.HasFile = true
 			receivedFile := new(File)
+			receivedFile.OriginalPublisher = &ogContact
 			receivedFile.Data = &responseMessage.Data
 			findValueResponse.File = *receivedFile
 		} else {
@@ -242,11 +244,13 @@ func (network *Network) SendFindValueMessage(contact *Contact, hash string, resc
 	network.Transport.SendRPCMessage(contact, rpc)
 }
 
-func (network *Network) SendStoreMessage(contact *Contact, hash string, data []byte, reschan chan bool) {
+func (network *Network) SendStoreMessage(originalPublisher *Contact, contact *Contact, hash string, data []byte, reschan chan bool) {
 	rpc := network.NewRPC(contact, "STORE")
 	messageID := rpc.GetMessageId()
 
 	payload := new(message.SendDataMessage)
+	payload.OriginalPublisherID = originalPublisher.ID.String()
+	payload.OriginalPublisherAddr = originalPublisher.Address
 	payload.Data = data
 	payload.Hash = hash
 
@@ -265,7 +269,6 @@ func (network *Network) SendStoreMessage(contact *Contact, hash string, data []b
 	// Unlock and send message
 	network.lock.Unlock()
 	network.Transport.SendRPCMessage(contact, rpc)
-
 }
 
 func (network *Network) SendDeleteMessage(contact *Contact, hash string, reschan chan bool) {

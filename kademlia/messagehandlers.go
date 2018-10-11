@@ -36,7 +36,7 @@ func (network *Network) registerMessageHandlers() {
 		rpc.GetMessageFromPayload(req)
 
 		// First, check if we have the file
-		file, ok := network.kademlia.FileMemoryStore.Get(req.Hash)
+		file, ok := network.kademlia.FileMemoryStore.GetEntireFile(req.Hash)
 
 		// Buuh, we do not have the file, respond wiht K closest nodes to file
 		if !ok {
@@ -59,7 +59,11 @@ func (network *Network) registerMessageHandlers() {
 			// Wohoo, we have the file!
 			res := new(message.FindValueResponse)
 			res.HasData = true
-			res.Data = *file
+			res.Data = *file.Data
+			res.OriginalPublisher = &message.Contact{
+				ID:      file.OriginalPublisher.ID.String(),
+				Address: file.OriginalPublisher.Address,
+			}
 
 			resRPC := rpc.GetResponse()
 			resRPC.SetPayloadFromMessage(res)
@@ -78,7 +82,9 @@ func (network *Network) registerMessageHandlers() {
 
 		log.Printf("[INFO]: Stored file on node %v\n", network.kademlia.Network.GetLocalContact().ID)
 
-		network.kademlia.FileMemoryStore.Put(req.Hash, req.Data, false)
+		// Create a original publisher contact from message info and store that in file struct (used for delete etc)
+		originalPublisher := NewContact(NewKademliaID(req.OriginalPublisherID), req.OriginalPublisherAddr)
+		network.kademlia.FileMemoryStore.Put(&originalPublisher, req.Hash, req.Data, false)
 
 		resRPC := rpc.GetResponse()
 		network.Transport.SendRPCMessage(sender, resRPC)
