@@ -577,9 +577,7 @@ func TestKademliaReplicateDelete(t *testing.T) {
 	firstNode := testnet.nodelist[15]
 
 	// Create file to store
-	hash1 := sha1.New()
-	hash1.Write([]byte("some/file/path/file.ext"))
-	fileHashString := hex.EncodeToString(hash1.Sum(nil))
+	fileHashString := PathHash("some/file/path/file.ext")
 	fileContent1 := []byte{1, 2, 3, 4, 5, 1, 3, 3, 7}
 
 	// Store file
