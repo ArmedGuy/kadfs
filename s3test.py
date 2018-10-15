@@ -6,7 +6,7 @@ KEY = "blabla/blabla.txt"
 
 session = boto3.session.Session()
 
-s3 = boto3.resource(service_name='s3', endpoint_url="http://localhost:8080",
+s3 = boto3.resource(service_name='s3', endpoint_url="http://localhost:8082",
                     aws_access_key_id="bla", aws_secret_access_key="hehe")
 
 try:

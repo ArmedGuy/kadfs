@@ -44,6 +44,7 @@ func main() {
 
 	var origin = flag.Bool("origin", false, "should node be a bootstrap node")
 	var listen = flag.String("listen", "0.0.0.0:4000", "which ip:port to listen for kademlia on")
+	var s3listen = flag.String("s3listen", "0.0.0.0:8080", "which ip:port s3 should listen to")
 
 	var bootstrapID = flag.String("bootstrap-id", "", "ID of node to bootstrap towards")
 	var bootstrapIP = flag.String("bootstrap-ip", "", "IP of node to bootstrap towards")
@@ -102,7 +103,7 @@ func main() {
 	// Listen for user input here whenever that gets implemented
 	// fmt.Scanln()
 
-	go s3.ConfigureAndListen(state, ":8080")
+	go s3.ConfigureAndListen(state, *s3listen)
 
 	for {
 		time.Sleep(15 * time.Second)
