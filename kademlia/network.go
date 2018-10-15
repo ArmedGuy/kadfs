@@ -19,7 +19,7 @@ type KademliaNetwork interface {
 	SendFindNodeMessage(*Contact, *KademliaID, chan *LookupResponse)
 	SendFindValueMessage(*Contact, string, chan *FindValueResponse)
 	SendStoreMessage(*Contact, *Contact, string, []byte, chan bool, int32)
-  SendDeleteMessage(*Contact, string, chan bool)
+	SendDeleteMessage(*Contact, string, chan bool)
 	SetRequestHandler(string, func(*Contact, *RPCMessage))
 	SetState(*Kademlia)
 }
@@ -97,21 +97,25 @@ func (network *Network) Listen() {
 			sender := caddr.String()
 			rpc := network.NewRPCFromDatagram(buf)
 			contact := NewContact(NewKademliaID(rpc.Header.SenderId), sender)
-			go network.kademlia.RoutingTable.AddContact(contact)
-			// Map request/responses to function based on message remoteProcedure/ID
-			if rpc.Header.Request {
-				if callback, ok := network.Requests[rpc.Header.RemoteProcedure]; ok {
-					go callback(&contact, rpc)
-				} else {
-					log.Printf("[WARNING] network: No request handler for %v\n", rpc.Header.RemoteProcedure)
-				}
-			} else {
-				if callback, ok := network.GetResponseHandler(rpc.Header.MessageId); ok {
-					go callback(&contact, rpc)
-				} else {
-					log.Printf("[WARNING] network: No response handler for %v\n", rpc.Header.MessageId)
-				}
-			}
+			network.HandleConnection(contact, rpc)
+		}
+	}
+}
+
+func (network *Network) HandleConnection(contact Contact, rpc *RPCMessage) {
+	go network.kademlia.RoutingTable.AddContact(contact)
+	// Map request/responses to function based on message remoteProcedure/ID
+	if rpc.Header.Request {
+		if callback, ok := network.Requests[rpc.Header.RemoteProcedure]; ok {
+			go callback(&contact, rpc)
+		} else {
+			log.Printf("[WARNING] network: No request handler for %v\n", rpc.Header.RemoteProcedure)
+		}
+	} else {
+		if callback, ok := network.GetResponseHandler(rpc.Header.MessageId); ok {
+			go callback(&contact, rpc)
+		} else {
+			log.Printf("[WARNING] network: No response handler for %v\n", rpc.Header.MessageId)
 		}
 	}
 }

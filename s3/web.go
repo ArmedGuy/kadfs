@@ -42,7 +42,7 @@ func getObject(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	path := vars["path"]
 	hash := pathToHash(path)
-	data, ok := kadfs.FindValue(hash)
+	data, _, ok := kadfs.FindValue(hash)
 	if !ok {
 		w.WriteHeader(404)
 	} else {
@@ -54,7 +54,7 @@ func headObject(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	path := vars["path"]
 	hash := pathToHash(path)
-	data, ok := kadfs.FindValue(hash)
+	data, _, ok := kadfs.FindValue(hash)
 	if !ok {
 		w.WriteHeader(404)
 	} else {
@@ -71,11 +71,15 @@ func putObject(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(500)
 	} else {
-		kadfs.Store(hash, data)
+		kadfs.Store(hash, data, true, 86400)
 		w.WriteHeader(200)
 	}
 }
 
 func deleteObject(w http.ResponseWriter, r *http.Request) {
-
+	vars := mux.Vars(r)
+	path := vars["path"]
+	hash := pathToHash(path)
+	kadfs.DeleteValue(hash)
+	w.WriteHeader(200)
 }

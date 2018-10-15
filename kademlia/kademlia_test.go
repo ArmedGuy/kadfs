@@ -36,18 +36,7 @@ func (trans *InternalRoutingTransport) SendRPCMessage(to *Contact, rpc *RPCMessa
 	if !ok {
 		log.Printf("[ERROR]: Other network broken, cannot do internal message routing")
 	}
-	go otherstate.RoutingTable.AddContact(*trans.From)
-	if rpc.Header.Request {
-		callback, _ := othernetwork.Requests[rpc.Header.RemoteProcedure]
-		go callback(trans.From, rpc)
-	} else {
-
-		if callback, ok := othernetwork.GetResponseHandler(rpc.Header.MessageId); ok {
-			go callback(trans.From, rpc)
-		} else {
-			log.Println("No response found")
-		}
-	}
+	othernetwork.HandleConnection(*trans.From, rpc)
 }
 
 func examineRoutingTable(state *Kademlia) {
