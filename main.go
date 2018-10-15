@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ArmedGuy/kadfs/s3"
+
 	"github.com/ArmedGuy/kadfs/kademlia"
 )
 
@@ -100,8 +102,10 @@ func main() {
 	// Listen for user input here whenever that gets implemented
 	// fmt.Scanln()
 
+	go s3.ConfigureAndListen(state, ":8080")
+
 	for {
-		time.Sleep(5 * time.Second)
+		time.Sleep(15 * time.Second)
 		examineRoutingTable(state)
 	}
 
