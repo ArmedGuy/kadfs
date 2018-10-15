@@ -7,14 +7,12 @@ import (
 	"time"
 )
 
-// Real constants. Where do i use tRepublish and where do i use tReplicate?
-// What is the difference?
 const tReplicate = 3600
 const tRepublish = 86400
 const tExpire = 86400
 
 type Datastore interface {
-	Put(hash string, data []byte)
+	Put(hash string, data []byte, isOriginal bool, expire int32)
 	Get(hash string) []byte
 	Delete(hash string)
 	GetKeysForReplicate() []string
@@ -28,12 +26,11 @@ type InMemoryStore struct {
 }
 
 type File struct {
+	expire    time.Time
+	republish time.Time
+	Data      *[]byte
+	isOG      bool
 	OriginalPublisher *Contact
-	replicate         time.Time
-	expire            time.Time
-	republish         time.Time
-	Data              *[]byte
-	isOG              bool
 }
 
 func NewInMemoryStore() *InMemoryStore {
@@ -53,21 +50,43 @@ func HashToKademliaID(hash string) *KademliaID {
 	return NewKademliaID(hash)
 }
 
-func (store *InMemoryStore) Put(originalPublisher *Contact, hash string, data []byte, isOriginal bool) {
+
+func (store *InMemoryStore) Put(originalPublisher *Contact, hash string, data []byte, isOriginal bool, expire int32) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
+	var republish time.Time
+
+	if isOriginal {
+		republish = time.Now().Add(tRepublish * time.Second)
+	} else {
+		republish = time.Now().Add(tReplicate * time.Second)
+	}
+
 	store.files[hash] = &File{
+		Data:      &data,
+		republish: republish,
+		expire:    time.Now().Add(time.Duration(expire) * time.Second),
+		isOG:      isOriginal,
 		OriginalPublisher: originalPublisher,
-		Data:              &data,
-		republish:         time.Now().Add(tRepublish * time.Second),
-		replicate:         time.Now().Add(tReplicate * time.Second),
-		expire:            time.Now().Add(tExpire * time.Second),
-		isOG:              isOriginal,
 	}
 }
 
-func (store *InMemoryStore) Get(hash string) (*[]byte, bool) {
+func (store *InMemoryStore) GetFileObject(hash string) (*File, bool) {
+	store.mutex.Lock()
+	defer store.mutex.Unlock()
+
+	s := store.files
+	file, ok := s[hash]
+
+	if !ok {
+		return nil, false
+	}
+
+	return file, ok
+}
+
+func (store *InMemoryStore) GetData(hash string) (*[]byte, bool) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
@@ -115,14 +134,14 @@ func (store *InMemoryStore) Delete(hash string) bool {
 	return true
 }
 
-func (store *InMemoryStore) GetKeysForReplicate() []string {
+func (store *InMemoryStore) GetKeysAndValueForReplicate() map[string]*File {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
-	temp := make([]string, 0)
+	temp := make(map[string]*File)
 	for key, value := range store.files {
-		if time.Now().After(value.replicate) && !value.isOG {
-			_ = append(temp, key)
+		if time.Now().After(value.republish) && !value.isOG {
+			temp[key] = store.files[key]
 		}
 	}
 
@@ -148,15 +167,24 @@ func (store *InMemoryStore) DeleteExpiredData() {
 	defer store.mutex.Unlock()
 
 	for key, value := range store.files {
-		if time.Now().After(value.expire) && !value.isOG {
+		if time.Now().After(value.expire) {
 			delete(store.files, key)
 		}
 	}
 }
 
-func (store *InMemoryStore) UpdateReplicateTime(hash string) {
+func (store *InMemoryStore) Update(hash string, data []byte, isOG bool, expire, republish time.Time) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
-	store.files[hash].replicate = time.Now().Add(tReplicate * time.Second)
+	s := store.files
+	file, ok := s[hash]
+
+	if ok {
+		file.Data = &data
+		file.isOG = isOG
+		file.expire = expire
+		file.republish = republish
+	}
+
 }

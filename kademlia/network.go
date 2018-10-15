@@ -18,8 +18,8 @@ type KademliaNetwork interface {
 	SendPingMessage(*Contact, chan bool)
 	SendFindNodeMessage(*Contact, *KademliaID, chan *LookupResponse)
 	SendFindValueMessage(*Contact, string, chan *FindValueResponse)
-	SendStoreMessage(*Contact, *Contact, string, []byte, chan bool)
-	SendDeleteMessage(*Contact, string, chan bool)
+	SendStoreMessage(*Contact, *Contact, string, []byte, chan bool, int32)
+  SendDeleteMessage(*Contact, string, chan bool)
 	SetRequestHandler(string, func(*Contact, *RPCMessage))
 	SetState(*Kademlia)
 }
@@ -94,7 +94,6 @@ func (network *Network) Listen() {
 			log.Printf("[WARNING] network: Could not read header, error: %v\n", err)
 			return
 		} else {
-			log.Printf("[INFO] network: got a packet PEPE\n")
 			sender := caddr.String()
 			rpc := network.NewRPCFromDatagram(buf)
 			contact := NewContact(NewKademliaID(rpc.Header.SenderId), sender)
@@ -244,7 +243,7 @@ func (network *Network) SendFindValueMessage(contact *Contact, hash string, resc
 	network.Transport.SendRPCMessage(contact, rpc)
 }
 
-func (network *Network) SendStoreMessage(originalPublisher *Contact, contact *Contact, hash string, data []byte, reschan chan bool) {
+func (network *Network) SendStoreMessage(originalPublisher *Contact, contact *Contact, hash string, data []byte, reschan chan bool, expire int32) {
 	rpc := network.NewRPC(contact, "STORE")
 	messageID := rpc.GetMessageId()
 
@@ -253,6 +252,7 @@ func (network *Network) SendStoreMessage(originalPublisher *Contact, contact *Co
 	payload.OriginalPublisherAddr = originalPublisher.Address
 	payload.Data = data
 	payload.Hash = hash
+	payload.Expire = expire
 
 	rpc.SetPayloadFromMessage(payload)
 

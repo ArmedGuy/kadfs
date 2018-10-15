@@ -2,6 +2,7 @@ package kademlia
 
 import (
 	"log"
+	"time"
 
 	"github.com/ArmedGuy/kadfs/message"
 )
@@ -82,9 +83,35 @@ func (network *Network) registerMessageHandlers() {
 
 		log.Printf("[INFO]: Stored file on node %v\n", network.kademlia.Network.GetLocalContact().ID)
 
-		// Create a original publisher contact from message info and store that in file struct (used for delete etc)
-		originalPublisher := NewContact(NewKademliaID(req.OriginalPublisherID), req.OriginalPublisherAddr)
-		network.kademlia.FileMemoryStore.Put(&originalPublisher, req.Hash, req.Data, false)
+		old, ok := network.kademlia.FileMemoryStore.GetFileObject(req.Hash)
+
+		// Check if we already have the file
+		if ok {
+			// Ok we have the file, check if old.expire is before req.expire
+			expireTimer := time.Now().Add(time.Duration(req.Expire) * time.Second)
+
+			var republishTime time.Time
+
+			if old.isOG {
+				republishTime = time.Now().Add(tRepublish * time.Second)
+			} else {
+				republishTime = time.Now().Add(tReplicate * time.Second)
+			}
+
+			if old.expire.Before(expireTimer) {
+				// If it is, update the expire time to req.Expire
+				network.kademlia.FileMemoryStore.Update(req.Hash, req.Data, old.isOG, expireTimer, republishTime)
+			} else {
+				// Here since we might overrite data on nodes using store
+				network.kademlia.FileMemoryStore.Update(req.Hash, req.Data, old.isOG, old.expire, old.republish)
+			}
+
+		} else {
+			// We do not have a file, just store it
+      originalPublisher := NewContact(NewKademliaID(req.OriginalPublisherID), req.OriginalPublisherAddr)
+      network.kademlia.FileMemoryStore.Put(&originalPublisher, req.Hash, req.Data, false, req.Expire)
+
+		}
 
 		resRPC := rpc.GetResponse()
 		network.Transport.SendRPCMessage(sender, resRPC)
