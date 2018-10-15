@@ -242,7 +242,7 @@ func (kademlia *Kademlia) Store(hash string, data []byte, isOG bool, expireTimer
 	thisNode := kademlia.Network.GetLocalContact()
 
 	// Store the file on this node
-	kademlia.FileMemoryStore.Put(thisNode, hash, data, true)
+	kademlia.FileMemoryStore.Put(thisNode, hash, data, true, expireTimer)
 	storeAmount++
 
 	reschan := make(chan bool)
@@ -252,13 +252,19 @@ func (kademlia *Kademlia) Store(hash string, data []byte, isOG bool, expireTimer
 		if node.ID != thisNode.ID {
 			n := node
 			// go kademlia.Network.SendStoreMessage(thisNode, &n, hash, data, reschan)
-      if isOG {
+			if isOG {
 				// Send a expire time that is tExpire seconds since i am the orignial publisher.
 				go kademlia.Network.SendStoreMessage(thisNode, &n, hash, data, reschan, int32(tExpire))
 			} else {
 				// Send a expire time that is tReplicate seconds since i am not original publisher.
-        // fix this garbo aka add OG to the store message
-				go kademlia.Network.SendStoreMessage(&n, hash, data, reschan, int32(tReplicate))
+				oldFile, ok1 := kademlia.FileMemoryStore.GetEntireFile(hash)
+
+				if !ok1 {
+					log.Printf("[ERROR] Store: Could not find the file")
+				} else {
+					ogContact := oldFile.OriginalPublisher
+					go kademlia.Network.SendStoreMessage(ogContact, &n, hash, data, reschan, int32(tReplicate))
+				}
 			}
 
 		}

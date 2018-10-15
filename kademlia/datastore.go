@@ -26,10 +26,10 @@ type InMemoryStore struct {
 }
 
 type File struct {
-	expire    time.Time
-	republish time.Time
-	Data      *[]byte
-	isOG      bool
+	expire            time.Time
+	republish         time.Time
+	Data              *[]byte
+	isOG              bool
 	OriginalPublisher *Contact
 }
 
@@ -50,7 +50,6 @@ func HashToKademliaID(hash string) *KademliaID {
 	return NewKademliaID(hash)
 }
 
-
 func (store *InMemoryStore) Put(originalPublisher *Contact, hash string, data []byte, isOriginal bool, expire int32) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
@@ -64,26 +63,12 @@ func (store *InMemoryStore) Put(originalPublisher *Contact, hash string, data []
 	}
 
 	store.files[hash] = &File{
-		Data:      &data,
-		republish: republish,
-		expire:    time.Now().Add(time.Duration(expire) * time.Second),
-		isOG:      isOriginal,
+		Data:              &data,
+		republish:         republish,
+		expire:            time.Now().Add(time.Duration(expire) * time.Second),
+		isOG:              isOriginal,
 		OriginalPublisher: originalPublisher,
 	}
-}
-
-func (store *InMemoryStore) GetFileObject(hash string) (*File, bool) {
-	store.mutex.Lock()
-	defer store.mutex.Unlock()
-
-	s := store.files
-	file, ok := s[hash]
-
-	if !ok {
-		return nil, false
-	}
-
-	return file, ok
 }
 
 func (store *InMemoryStore) GetData(hash string) (*[]byte, bool) {

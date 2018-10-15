@@ -83,7 +83,7 @@ func (network *Network) registerMessageHandlers() {
 
 		log.Printf("[INFO]: Stored file on node %v\n", network.kademlia.Network.GetLocalContact().ID)
 
-		old, ok := network.kademlia.FileMemoryStore.GetFileObject(req.Hash)
+		old, ok := network.kademlia.FileMemoryStore.GetEntireFile(req.Hash)
 
 		// Check if we already have the file
 		if ok {
@@ -108,8 +108,8 @@ func (network *Network) registerMessageHandlers() {
 
 		} else {
 			// We do not have a file, just store it
-      originalPublisher := NewContact(NewKademliaID(req.OriginalPublisherID), req.OriginalPublisherAddr)
-      network.kademlia.FileMemoryStore.Put(&originalPublisher, req.Hash, req.Data, false, req.Expire)
+			originalPublisher := NewContact(NewKademliaID(req.OriginalPublisherID), req.OriginalPublisherAddr)
+			network.kademlia.FileMemoryStore.Put(&originalPublisher, req.Hash, req.Data, false, req.Expire)
 
 		}
 
