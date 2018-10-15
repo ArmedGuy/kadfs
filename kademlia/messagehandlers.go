@@ -37,7 +37,7 @@ func (network *Network) registerMessageHandlers() {
 		rpc.GetMessageFromPayload(req)
 
 		// First, check if we have the file
-		file, ok := network.kademlia.FileMemoryStore.GetData(req.Hash)
+		file, ok := network.kademlia.FileMemoryStore.GetEntireFile(req.Hash)
 
 		// Buuh, we do not have the file, respond wiht K closest nodes to file
 		if !ok {
@@ -60,7 +60,11 @@ func (network *Network) registerMessageHandlers() {
 			// Wohoo, we have the file!
 			res := new(message.FindValueResponse)
 			res.HasData = true
-			res.Data = *file
+			res.Data = *file.Data
+			res.OriginalPublisher = &message.Contact{
+				ID:      file.OriginalPublisher.ID.String(),
+				Address: file.OriginalPublisher.Address,
+			}
 
 			resRPC := rpc.GetResponse()
 			resRPC.SetPayloadFromMessage(res)
@@ -104,10 +108,37 @@ func (network *Network) registerMessageHandlers() {
 
 		} else {
 			// We do not have a file, just store it
-			network.kademlia.FileMemoryStore.Put(req.Hash, req.Data, false, req.Expire)
+      originalPublisher := NewContact(NewKademliaID(req.OriginalPublisherID), req.OriginalPublisherAddr)
+      network.kademlia.FileMemoryStore.Put(&originalPublisher, req.Hash, req.Data, false, req.Expire)
+
 		}
 
 		resRPC := rpc.GetResponse()
+		network.Transport.SendRPCMessage(sender, resRPC)
+	})
+
+	network.SetRequestHandler("DELETE", func(sender *Contact, rpc *RPCMessage) {
+		req := new(message.DeleteValueRequest)
+		rpc.GetMessageFromPayload(req)
+
+		log.Printf("[INFO] MessageHandlers Delete: Got DELETE message for file %v on node %v\n", req.Hash, network.kademlia.Network.GetLocalContact().ID)
+
+		fileWasDeleted := network.kademlia.FileMemoryStore.Delete(req.Hash)
+
+		resRPC := rpc.GetResponse()
+
+		// Here we need to create a DeletResponse and add as payload to resRPC
+		res := new(message.DeleteValueResponse)
+		if fileWasDeleted {
+			// Respond with true
+			res.Deleted = true
+			log.Printf("[INFO] MessageHandlers Delete: File %v was successfully deleted from node %v\n", req.Hash, network.kademlia.Network.GetLocalContact().ID)
+		} else {
+			// Respond with false
+			log.Printf("[INFO] MessageHandlers Delete: File %v could not be deleted from node %v\n", req.Hash, network.kademlia.Network.GetLocalContact().ID)
+			res.Deleted = false
+		}
+		resRPC.SetPayloadFromMessage(res)
 		network.Transport.SendRPCMessage(sender, resRPC)
 	})
 }

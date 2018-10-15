@@ -30,6 +30,7 @@ type File struct {
 	republish time.Time
 	Data      *[]byte
 	isOG      bool
+	OriginalPublisher *Contact
 }
 
 func NewInMemoryStore() *InMemoryStore {
@@ -49,7 +50,8 @@ func HashToKademliaID(hash string) *KademliaID {
 	return NewKademliaID(hash)
 }
 
-func (store *InMemoryStore) Put(hash string, data []byte, isOriginal bool, expire int32) {
+
+func (store *InMemoryStore) Put(originalPublisher *Contact, hash string, data []byte, isOriginal bool, expire int32) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
@@ -66,6 +68,7 @@ func (store *InMemoryStore) Put(hash string, data []byte, isOriginal bool, expir
 		republish: republish,
 		expire:    time.Now().Add(time.Duration(expire) * time.Second),
 		isOG:      isOriginal,
+		OriginalPublisher: originalPublisher,
 	}
 }
 
@@ -99,11 +102,36 @@ func (store *InMemoryStore) GetData(hash string) (*[]byte, bool) {
 	return file, true
 }
 
-func (store *InMemoryStore) Delete(hash string) {
+func (store *InMemoryStore) GetEntireFile(hash string) (*File, bool) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
+	s := store.files
+	s1, ok := s[hash]
+
+	// No file found, return errrrrr
+	if !ok {
+		return nil, false
+	}
+
+	return s1, true
+}
+
+func (store *InMemoryStore) Delete(hash string) bool {
+	store.mutex.Lock()
+	defer store.mutex.Unlock()
+
+	// First, check if we even have the file
+	s := store.files
+	_, ok := s[hash]
+
+	// Delete if we have the file, else return false
+	if !ok {
+		return false
+	}
+
 	delete(store.files, hash)
+	return true
 }
 
 func (store *InMemoryStore) GetKeysAndValueForReplicate() map[string]*File {
