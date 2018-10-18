@@ -4,24 +4,24 @@ networks:
   kademlia_network:
 
 services:
-  kadfs-bootstrap:
-    image: kademlia:latest
-    command: "--listen=0.0.0.0:4000 --origin=true"
+  consul-server:
+    image: consul
+    command: agent -server -bootstrap-expect=1
     networks:
       kademlia_network:
         aliases:
-          - kadfsbootstrap
+          - consulserver
     deploy:
       endpoint_mode: dnsrr
   kadfs-nodes:
     image: kademlia:latest
-    command: "--listen=0.0.0.0:4000 --bootstrap-id=0000000000000000000000000000000000000000 --bootstrap-ip=kadfsbootstrap:4000"
+    command: "--listen=0.0.0.0:4000 --s3listen=0.0.0.0:8080 --consul=true"
     links:
       - "kadfs-bootstrap:bootstrap"
     depends_on:
       - kadfs-bootstrap
     deploy:
-      replicas: 99
+      replicas: 100
       restart_policy:
         condition: on-failure
       endpoint_mode: dnsrr
