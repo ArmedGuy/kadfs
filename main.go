@@ -91,6 +91,8 @@ func main() {
 		log.Println("[INFO] kadfs: Running in origin mode, no bootstrap!")
 	} else if *consul {
 		log.Printf("[INFO] kadfs: Bootstrapping via consul")
+		time.Sleep(2 * time.Second)
+
 		client, err := api.NewClient(&api.Config{
 			Address: "127.0.0.1:8500",
 		})
@@ -107,7 +109,7 @@ func main() {
 
 		services, _, err := client.Catalog().Service("kadfs", "", &api.QueryOptions{})
 		if err != nil {
-			log.Panicf("[ERROR] kadfs: Unable to fetch services")
+			log.Panicf("[ERROR] kadfs: Unable to fetch services, error: %v", err)
 		}
 		if len(services) != 0 {
 			rand.Seed(time.Now().Unix())

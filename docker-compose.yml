@@ -1,14 +1,16 @@
 version: "3.3"
 
 networks:
-  kademlia_network:
+  kademlia_network: {}
 
 services:
   consul-server:
     image: consul-server
-    command: -bootstrap-expect=1 -data-dir=/tmp/
+    command: -ui -bootstrap-expect=1 -data-dir=/tmp/ -bind=0.0.0.0 -client=0.0.0.0
     ports:
-      - "8500:8500"
+      - published: 8500
+        target: 8500
+        mode: host
     networks:
       kademlia_network:
         aliases:
@@ -19,12 +21,8 @@ services:
   kadfs-nodes:
     image: kademlia:latest
     command: "--listen=0.0.0.0:4000 --s3listen=0.0.0.0:8080 --consul=true"
-    links:
-      - "kadfs-bootstrap:bootstrap"
-    depends_on:
-      - kadfs-bootstrap
     deploy:
-      replicas: 2
+      replicas: 50
       restart_policy:
         condition: on-failure
       endpoint_mode: dnsrr
