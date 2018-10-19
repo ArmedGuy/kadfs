@@ -124,7 +124,7 @@ func main() {
 		if rand.Intn(10) < 2 {
 			tags = append(tags, "origin")
 		}
-
+		time.Sleep(time.Duration(2+rand.Intn(4)) * time.Second)
 		services, _, err := client.Catalog().Service("kadfs", "origin", &api.QueryOptions{})
 		if err != nil {
 			log.Panicf("[ERROR] kadfs: Unable to fetch services, error: %v", err)
