@@ -121,10 +121,11 @@ func main() {
 		}
 		tags := []string{fmt.Sprintf("kadfsid-%v", myID.String())}
 
-		if rand.Intn(10) < 2 {
+		if rand.Intn(10) < 1 {
 			tags = append(tags, "origin")
+		} else {
+			time.Sleep(time.Duration(2+rand.Intn(4)) * time.Second)
 		}
-		time.Sleep(time.Duration(2+rand.Intn(4)) * time.Second)
 		services, _, err := client.Catalog().Service("kadfs", "origin", &api.QueryOptions{})
 		if err != nil {
 			log.Panicf("[ERROR] kadfs: Unable to fetch services, error: %v", err)
