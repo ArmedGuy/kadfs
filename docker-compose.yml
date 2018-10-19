@@ -5,14 +5,15 @@ networks:
 
 services:
   consul-server:
-    image: consul
-    command: agent -server -bootstrap-expect=1
+    image: consul-server
+    command: -bootstrap-expect=1 -data-dir=/tmp/
     networks:
       kademlia_network:
         aliases:
           - consulserver
     deploy:
       endpoint_mode: dnsrr
+
   kadfs-nodes:
     image: kademlia:latest
     command: "--listen=0.0.0.0:4000 --s3listen=0.0.0.0:8080 --consul=true"
@@ -21,7 +22,7 @@ services:
     depends_on:
       - kadfs-bootstrap
     deploy:
-      replicas: 100
+      replicas: 2
       restart_policy:
         condition: on-failure
       endpoint_mode: dnsrr

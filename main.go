@@ -48,6 +48,7 @@ func main() {
 
 	var bootstrapID = flag.String("bootstrap-id", "", "ID of node to bootstrap towards")
 	var bootstrapIP = flag.String("bootstrap-ip", "", "IP of node to bootstrap towards")
+	var consul = flag.Bool("consul", false, "bootstrap via consul")
 
 	flag.Parse()
 
@@ -84,6 +85,8 @@ func main() {
 
 	if *origin {
 		log.Println("[INFO] kadfs: Running in origin mode, no bootstrap!")
+	} else if *consul {
+		log.Printf("[INFO] kadfs: Bootstrapping via consul")
 	} else {
 		log.Printf("[INFO] kadfs: Sleeping for 2 seconds to make sure the bootstrap node is up.")
 		time.Sleep(2 * time.Second)
