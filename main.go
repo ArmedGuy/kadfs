@@ -53,6 +53,7 @@ func getRoutingTable(state *kademlia.Kademlia) string {
 		b.WriteString(fmt.Sprintf("%v: %v at distance %v\n", i, c, local.ID.CalcDistance(c.ID)))
 	}
 	b.WriteString("----------------------------------------------------------------------------------\n")
+	b.WriteString(fmt.Sprintf("Last updated at %v", time.Now().Format("2006-01-02T15:04:05")))
 	return b.String()
 }
 
@@ -145,6 +146,17 @@ func main() {
 		if err != nil {
 			log.Panicf("[ERROR] kadfs: Failed to register service with consul, error: %v", err)
 		} else {
+			client.Agent().ServiceRegister(&api.AgentServiceRegistration{
+				Name:    "kadfs-s3",
+				Address: address,
+				Port:    8080,
+				Tags:    []string{"urlprefix-/"},
+				Check: &api.AgentServiceCheck{
+					TCP:      fmt.Sprintf("%v:%v", address, 8080),
+					Interval: "10s",
+					Timeout:  "2s",
+				},
+			})
 			go func() {
 				for {
 					time.Sleep(10 * time.Second)
