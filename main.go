@@ -43,12 +43,7 @@ func examineRoutingTable(state *kademlia.Kademlia) {
 	log.Println("----------------------------------------------------------------------------------")
 }
 
-func writeRoutingTable(state *kademlia.Kademlia) {
-	f, err := os.Create("/tmp/kadfs-routing-table")
-	if err != nil {
-		return
-	}
-	defer f.Close()
+func getRoutingTable(state *kademlia.Kademlia) string {
 	local := state.Network.GetLocalContact()
 	f.WriteString("----------------------------------------------------------------------------------\n")
 	f.WriteString(fmt.Sprintf("Viewing routing table for node %v\n", local))
@@ -143,14 +138,11 @@ func main() {
 			Address: address,
 			Port:    port,
 			Tags:    tags,
-			Check: &api.AgentServiceCheck{
-				Name: "kadfs routing table",
-				Interval: "30s",
-				Args: []string{"cat", "/tmp/kadfs-routing-table"},
-			}
 		})
 		if err != nil {
-			log.Panicf("[ERROR] kadfs: Failed to register service with consul")
+			log.Panicf("[ERROR] kadfs: Failed to register service with consul, error: %v", err)
+		} else {
+			client
 		}
 	} else {
 		log.Printf("[INFO] kadfs: Sleeping for 2 seconds to make sure the bootstrap node is up.")
@@ -176,7 +168,6 @@ func main() {
 	for {
 		time.Sleep(15 * time.Second)
 		examineRoutingTable(state)
-		writeRoutingTable(state)
 	}
 
 }
