@@ -7,6 +7,8 @@ services:
   consul-server:
     image: consul-server
     command: -bootstrap-expect=1 -data-dir=/tmp/
+    ports:
+      - "8500:8500"
     networks:
       kademlia_network:
         aliases:

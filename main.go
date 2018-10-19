@@ -2,15 +2,19 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"math/rand"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/ArmedGuy/kadfs/s3"
 
 	"github.com/ArmedGuy/kadfs/kademlia"
+
+	"github.com/hashicorp/consul/api"
 )
 
 func GetLocalIP() string {
@@ -87,6 +91,45 @@ func main() {
 		log.Println("[INFO] kadfs: Running in origin mode, no bootstrap!")
 	} else if *consul {
 		log.Printf("[INFO] kadfs: Bootstrapping via consul")
+		client, err := api.NewClient(&api.Config{
+			Address: "127.0.0.1:8500",
+		})
+		if err != nil {
+			log.Panicf("[ERROR] kadfs: Unable to bootstrap via consul, error: %v", err)
+		}
+		parts := strings.Split(*listen, ":")
+		address := parts[0]
+		port, err := strconv.Atoi(parts[1])
+		if err != nil {
+			log.Panicf("[ERROR] kadfs: Invalid port on listen for consul service registration")
+		}
+		tags := []string{fmt.Sprintf("kadfsid-%v", myID.String())}
+
+		services, _, err := client.Catalog().Service("kadfs", "", &api.QueryOptions{})
+		if err != nil {
+			log.Panicf("[ERROR] kadfs: Unable to fetch services")
+		}
+		if len(services) != 0 {
+			rand.Seed(time.Now().Unix())
+			service := services[rand.Intn(len(services))]
+
+			consulBootstrapIP := fmt.Sprintf("%v:%v", service.ServiceAddress, service.ServicePort)
+			consulBootstrapID := kademlia.NewKademliaID(strings.Replace(service.ServiceTags[0], "kadfsid-", "", 1))
+			bootstrapNode := kademlia.NewContact(consulBootstrapID, consulBootstrapIP)
+
+			state.Bootstrap(&bootstrapNode)
+		} else {
+			log.Printf("[INFO] kadfs: No services found in consul, registering and hoping someone will bootstrap towards me")
+		}
+		err = client.Agent().ServiceRegister(&api.AgentServiceRegistration{
+			Name:    "kadfs",
+			Address: address,
+			Port:    port,
+			Tags:    tags,
+		})
+		if err != nil {
+			log.Panicf("[ERROR] kadfs: Failed to register service with consul")
+		}
 	} else {
 		log.Printf("[INFO] kadfs: Sleeping for 2 seconds to make sure the bootstrap node is up.")
 		time.Sleep(2 * time.Second)
