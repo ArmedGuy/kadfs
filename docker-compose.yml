@@ -11,6 +11,9 @@ services:
       - published: 8500
         target: 8500
         mode: host
+      - published: 80
+        target: 9999
+        mode: host
     networks:
       kademlia_network:
         aliases:
