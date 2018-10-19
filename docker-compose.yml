@@ -6,7 +6,7 @@ networks:
 services:
   consul-server:
     image: consul-server
-    command: -ui -bootstrap-expect=1 -data-dir=/tmp/ -bind=0.0.0.0 -client=0.0.0.0
+    command: -ui -bootstrap-expect=1 -data-dir=/tmp/ -bind=0.0.0.0 -client=0.0.0.0 -enable-script-checks
     ports:
       - published: 8500
         target: 8500

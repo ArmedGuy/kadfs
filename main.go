@@ -43,6 +43,21 @@ func examineRoutingTable(state *kademlia.Kademlia) {
 	log.Println("----------------------------------------------------------------------------------")
 }
 
+func writeRoutingTable(state *kademlia.Kademlia) {
+	f, err := os.Create("/tmp/kadfs-routing-table")
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	local := state.Network.GetLocalContact()
+	f.WriteString("----------------------------------------------------------------------------------\n")
+	f.WriteString(fmt.Sprintf("Viewing routing table for node %v\n", local))
+	for i, c := range state.RoutingTable.FindClosestContacts(local.ID, 20) {
+		f.WriteString(fmt.Sprintf("%v: %v at distance %v\n", i, c, local.ID.CalcDistance(c.ID)))
+	}
+	f.WriteString("----------------------------------------------------------------------------------\n")
+}
+
 func main() {
 	var myID *kademlia.KademliaID
 
@@ -128,6 +143,11 @@ func main() {
 			Address: address,
 			Port:    port,
 			Tags:    tags,
+			Check: &api.AgentServiceCheck{
+				Name: "kadfs routing table",
+				Interval: "30s",
+				Args: []string{"cat", "/tmp/kadfs-routing-table"},
+			}
 		})
 		if err != nil {
 			log.Panicf("[ERROR] kadfs: Failed to register service with consul")
@@ -156,6 +176,7 @@ func main() {
 	for {
 		time.Sleep(15 * time.Second)
 		examineRoutingTable(state)
+		writeRoutingTable(state)
 	}
 
 }
