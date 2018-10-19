@@ -121,7 +121,11 @@ func main() {
 		}
 		tags := []string{fmt.Sprintf("kadfsid-%v", myID.String())}
 
-		services, _, err := client.Catalog().Service("kadfs", "", &api.QueryOptions{})
+		if rand.Intn(10) < 2 {
+			tags = append(tags, "origin")
+		}
+
+		services, _, err := client.Catalog().Service("kadfs", "origin", &api.QueryOptions{})
 		if err != nil {
 			log.Panicf("[ERROR] kadfs: Unable to fetch services, error: %v", err)
 		}
@@ -136,6 +140,7 @@ func main() {
 			state.Bootstrap(&bootstrapNode)
 		} else {
 			log.Printf("[INFO] kadfs: No services found in consul, registering and hoping someone will bootstrap towards me")
+			tags = append(tags, "origin")
 		}
 		err = client.Agent().ServiceRegister(&api.AgentServiceRegistration{
 			Name:    "kadfs",
