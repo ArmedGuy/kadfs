@@ -87,7 +87,7 @@ func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
 				sendto = tmp
 				candidates.Append(response.Contacts)
 				break
-			case <-time.After(3 * time.Second):
+			case <-time.After(1 * time.Second):
 				log.Println("[WARNING] Timeout of response")
 				break
 			}
@@ -206,7 +206,7 @@ func (kademlia *Kademlia) FindValue(hash string) ([]byte, *Contact, bool) { // R
 					candidates.Append(response.Contacts)
 					break
 				}
-			case <-time.After(3 * time.Second):
+			case <-time.After(1 * time.Second):
 				log.Println("[INFO] Kademlia FindValue: timeout of response")
 				break
 			}
@@ -276,7 +276,7 @@ func (kademlia *Kademlia) Store(hash string, data []byte, isOG bool, expireTimer
 		select {
 		case <-reschan:
 			storeAmount++
-		case <-time.After(5 * time.Second):
+		case <-time.After(2 * time.Second):
 			break
 		}
 		clientsToHandle--
@@ -328,7 +328,7 @@ func (kademlia *Kademlia) DeleteValue(hash string) int {
 			if response {
 				deleteAmount++
 			}
-		case <-time.After(5 * time.Second):
+		case <-time.After(2 * time.Second):
 			break
 		}
 		clientsToHandle--
