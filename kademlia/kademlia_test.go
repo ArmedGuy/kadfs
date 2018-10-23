@@ -593,7 +593,7 @@ func TestKademliaReplicateDelete(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// Add file to noFileNode and update to have replicate NOW
-	noFileNode.FileMemoryStore.Put(firstNode.Network.GetLocalContact(), fileHashString, fileContent1, false, 1000)
+	noFileNode.FileMemoryStore.Put(firstNode.Network.GetLocalContact(), fileHashString, fileContent1, false, 1000, time.Now())
 
 	for i := range testnet.nodelist {
 		testnet.nodelist[i].FileMemoryStore.Update(fileHashString, fileContent1, false, time.Now(), time.Now())

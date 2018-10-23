@@ -95,18 +95,7 @@ func (network *Network) registerMessageHandlers() {
 
 		// Check if we already have the file
 		if ok {
-
-			//
-			// Here we must somehow check if its an "external" store and only then check if the timestamp is newer
-			// compared to the one already stored in the file...
-			//
-			// Replicate and republish should not care about this timestamp!
-			//
-
-			//
-			// This below is wrong!
-			//
-			if old.timestamp.Before(timestamp) {
+			if old.timestamp.Before(timestamp) || old.timestamp.Equal(timestamp) {
 
 				// Ok we have the file, check if old.expire is before req.expire
 				expireTimer := time.Now().Add(time.Duration(req.Expire) * time.Second)
@@ -121,19 +110,16 @@ func (network *Network) registerMessageHandlers() {
 
 				if old.expire.Before(expireTimer) {
 					// If it is, update the expire time to req.Expire
-					network.kademlia.FileMemoryStore.Update(req.Hash, req.Data, old.isOG, expireTimer, republishTime)
+					network.kademlia.FileMemoryStore.Update(req.Hash, req.Data, old.isOG, expireTimer, republishTime, timestamp)
 				} else {
 					// Here since we might overrite data on nodes using store
-					network.kademlia.FileMemoryStore.Update(req.Hash, req.Data, old.isOG, old.expire, old.republish)
+					network.kademlia.FileMemoryStore.Update(req.Hash, req.Data, old.isOG, old.expire, old.republish, timestamp)
 				}
 			}
 		} else {
-
 			//
 			// Here it's safe for us to just store the file with the timestamp!
 			//
-
-			// We do not have a file, just store it
 			originalPublisher := NewContact(NewKademliaID(req.OriginalPublisherID), req.OriginalPublisherAddr)
 			network.kademlia.FileMemoryStore.Put(&originalPublisher, req.Hash, req.Data, false, req.Expire, timestamp)
 		}

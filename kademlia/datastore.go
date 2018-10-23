@@ -160,7 +160,7 @@ func (store *InMemoryStore) DeleteExpiredData() {
 	}
 }
 
-func (store *InMemoryStore) Update(hash string, data []byte, isOG bool, expire, republish time.Time) {
+func (store *InMemoryStore) Update(hash string, data []byte, isOG bool, expire, republish time.Time, timestamp time.Time) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
@@ -172,6 +172,7 @@ func (store *InMemoryStore) Update(hash string, data []byte, isOG bool, expire, 
 		file.isOG = isOG
 		file.expire = expire
 		file.republish = republish
+		file.timestamp = timestamp
 	}
 
 }
