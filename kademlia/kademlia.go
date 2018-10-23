@@ -241,7 +241,7 @@ func (kademlia *Kademlia) Store(hash string, data []byte, isOG bool, expireTimer
 	thisNode := kademlia.Network.GetLocalContact()
 
 	// Store the file on this node
-	kademlia.FileMemoryStore.Put(thisNode, hash, data, true, expireTimer)
+	kademlia.FileMemoryStore.Put(thisNode, hash, data, isOG, expireTimer)
 	storeAmount++
 
 	reschan := make(chan bool)
