@@ -260,13 +260,13 @@ func (network *Network) SendStoreMessage(originalPublisher *Contact, contact *Co
 	payload.Expire = expire
 
 	// Convert time.Time to protobuff timestamp
-	protoc_timestamp, err := ptypes.TimestampProto(timestamp)
+	protocTimestamp, err := ptypes.TimestampProto(timestamp)
 	if err != nil {
 		log.Printf("[ERROR] network SendStoreMessage: Could not convert time.Time to protobuf timestamp!\n")
 	}
 
 	// Add timestamp to message payload
-	payload.Timestamp = protoc_timestamp
+	payload.Timestamp = protocTimestamp
 
 	rpc.SetPayloadFromMessage(payload)
 

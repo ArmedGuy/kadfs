@@ -95,26 +95,44 @@ func (network *Network) registerMessageHandlers() {
 
 		// Check if we already have the file
 		if ok {
-			// Ok we have the file, check if old.expire is before req.expire
-			expireTimer := time.Now().Add(time.Duration(req.Expire) * time.Second)
 
-			var republishTime time.Time
+			//
+			// Here we must somehow check if its an "external" store and only then check if the timestamp is newer
+			// compared to the one already stored in the file...
+			//
+			// Replicate and republish should not care about this timestamp!
+			//
 
-			if old.isOG {
-				republishTime = time.Now().Add(tRepublish * time.Second)
-			} else {
-				republishTime = time.Now().Add(tReplicate * time.Second)
+			//
+			// This below is wrong!
+			//
+			if old.timestamp.Before(timestamp) {
+
+				// Ok we have the file, check if old.expire is before req.expire
+				expireTimer := time.Now().Add(time.Duration(req.Expire) * time.Second)
+
+				var republishTime time.Time
+
+				if old.isOG {
+					republishTime = time.Now().Add(tRepublish * time.Second)
+				} else {
+					republishTime = time.Now().Add(tReplicate * time.Second)
+				}
+
+				if old.expire.Before(expireTimer) {
+					// If it is, update the expire time to req.Expire
+					network.kademlia.FileMemoryStore.Update(req.Hash, req.Data, old.isOG, expireTimer, republishTime)
+				} else {
+					// Here since we might overrite data on nodes using store
+					network.kademlia.FileMemoryStore.Update(req.Hash, req.Data, old.isOG, old.expire, old.republish)
+				}
 			}
-
-			if old.expire.Before(expireTimer) {
-				// If it is, update the expire time to req.Expire
-				network.kademlia.FileMemoryStore.Update(req.Hash, req.Data, old.isOG, expireTimer, republishTime)
-			} else {
-				// Here since we might overrite data on nodes using store
-				network.kademlia.FileMemoryStore.Update(req.Hash, req.Data, old.isOG, old.expire, old.republish)
-			}
-
 		} else {
+
+			//
+			// Here it's safe for us to just store the file with the timestamp!
+			//
+
 			// We do not have a file, just store it
 			originalPublisher := NewContact(NewKademliaID(req.OriginalPublisherID), req.OriginalPublisherAddr)
 			network.kademlia.FileMemoryStore.Put(&originalPublisher, req.Hash, req.Data, false, req.Expire, timestamp)
