@@ -233,7 +233,7 @@ func (kademlia *Kademlia) FindValue(hash string) ([]byte, *Contact, bool) { // R
 	}
 }
 
-func (kademlia *Kademlia) Store(hash string, data []byte, isOG bool, expireTimer int32) int {
+func (kademlia *Kademlia) Store(hash string, data []byte) int {
 	// Save on how many nodes we store this file
 	storeAmount := 0
 
@@ -241,7 +241,7 @@ func (kademlia *Kademlia) Store(hash string, data []byte, isOG bool, expireTimer
 	thisNode := kademlia.Network.GetLocalContact()
 
 	// Store the file on this node
-	kademlia.FileMemoryStore.Put(thisNode, hash, data, isOG, expireTimer)
+	kademlia.FileMemoryStore.Put(thisNode, hash, data, true, tExpire)
 	storeAmount++
 
 	reschan := make(chan bool)
@@ -250,21 +250,8 @@ func (kademlia *Kademlia) Store(hash string, data []byte, isOG bool, expireTimer
 	for _, node := range closest {
 		if node.ID != thisNode.ID {
 			n := node
-			// go kademlia.Network.SendStoreMessage(thisNode, &n, hash, data, reschan)
-			if isOG {
-				// Send a expire time that is tExpire seconds since i am the orignial publisher.
-				go kademlia.Network.SendStoreMessage(thisNode, &n, hash, data, reschan, int32(tExpire))
-			} else {
-				// Send a expire time that is tReplicate seconds since i am not original publisher.
-				oldFile, ok1 := kademlia.FileMemoryStore.GetEntireFile(hash)
-
-				if !ok1 {
-					log.Printf("[ERROR] Store: Could not find the file")
-				} else {
-					ogContact := oldFile.OriginalPublisher
-					go kademlia.Network.SendStoreMessage(ogContact, &n, hash, data, reschan, int32(tReplicate))
-				}
-			}
+			// Send a expire time that is tExpire seconds since i am the orignial publisher.
+			go kademlia.Network.SendStoreMessage(thisNode, &n, hash, data, reschan, int32(tExpire))
 
 		}
 	}
@@ -348,18 +335,27 @@ func (kademlia *Kademlia) Ping(contact *Contact) bool {
 	}
 }
 
-// Always orignial publisher that republishes hence true
 func (kademlia *Kademlia) Republish() {
 	m := kademlia.FileMemoryStore.GetKeysAndValueForRepublish()
+	reschan := make(chan bool)
+
+	thisNode := kademlia.Network.GetLocalContact()
 
 	for key, value := range m {
 		log.Printf("[INFO] Republishing data with key: %v\n", key)
-		go kademlia.Store(key, *value.Data, true, tRepublish)
+		closest := kademlia.FindNode(NewKademliaID(key), K)
+
+		for _, contact := range closest {
+			n := contact
+			go kademlia.Network.SendStoreMessage(thisNode, &n, key, *value.Data, reschan, int32(tRepublish))
+		}
+
 	}
 }
 
 func (kademlia *Kademlia) Replicate() {
 	m := kademlia.FileMemoryStore.GetKeysAndValueForReplicate()
+	reschan := make(chan bool)
 
 	for key, value := range m {
 		closest := kademlia.FindNode(NewKademliaID(key), K)
@@ -374,7 +370,12 @@ func (kademlia *Kademlia) Replicate() {
 
 		if iAmInClosest {
 			// update time
-			go kademlia.Store(key, *value.Data, false, tReplicate)
+			thisNode := kademlia.Network.GetLocalContact()
+			for _, contact := range closest {
+				n := contact
+				go kademlia.Network.SendStoreMessage(thisNode, &n, key, *value.Data, reschan, int32(tReplicate))
+			}
+
 		} else {
 			log.Printf("[INFO] Deleting data with key: %v\n", key)
 			go kademlia.FileMemoryStore.Delete(key)

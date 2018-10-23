@@ -71,7 +71,7 @@ func putObject(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(500)
 	} else {
-		kadfs.Store(hash, data, true, 86400)
+		kadfs.Store(hash, data)
 		w.WriteHeader(200)
 	}
 }
