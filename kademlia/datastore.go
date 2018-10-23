@@ -31,6 +31,7 @@ type File struct {
 	Data              *[]byte
 	isOG              bool
 	OriginalPublisher *Contact
+	timestamp         time.Time
 }
 
 func NewInMemoryStore() *InMemoryStore {
@@ -50,7 +51,7 @@ func HashToKademliaID(hash string) *KademliaID {
 	return NewKademliaID(hash)
 }
 
-func (store *InMemoryStore) Put(originalPublisher *Contact, hash string, data []byte, isOriginal bool, expire int32) {
+func (store *InMemoryStore) Put(originalPublisher *Contact, hash string, data []byte, isOriginal bool, expire int32, timestamp time.Time) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
@@ -68,6 +69,7 @@ func (store *InMemoryStore) Put(originalPublisher *Contact, hash string, data []
 		expire:            time.Now().Add(time.Duration(expire) * time.Second),
 		isOG:              isOriginal,
 		OriginalPublisher: originalPublisher,
+		timestamp:         timestamp,
 	}
 }
 
@@ -158,7 +160,7 @@ func (store *InMemoryStore) DeleteExpiredData() {
 	}
 }
 
-func (store *InMemoryStore) Update(hash string, data []byte, isOG bool, expire, republish time.Time) {
+func (store *InMemoryStore) Update(hash string, data []byte, isOG bool, expire, republish time.Time, timestamp time.Time) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
@@ -170,6 +172,7 @@ func (store *InMemoryStore) Update(hash string, data []byte, isOG bool, expire, 
 		file.isOG = isOG
 		file.expire = expire
 		file.republish = republish
+		file.timestamp = timestamp
 	}
 
 }

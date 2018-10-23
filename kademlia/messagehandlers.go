@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/ArmedGuy/kadfs/message"
+	"github.com/golang/protobuf/ptypes"
 )
 
 func (network *Network) registerMessageHandlers() {
@@ -85,32 +86,42 @@ func (network *Network) registerMessageHandlers() {
 
 		old, ok := network.kademlia.FileMemoryStore.GetEntireFile(req.Hash)
 
+		// Get protobuff timestamp and convert back to time.Time
+		timestamp, err := ptypes.Timestamp(req.Timestamp)
+
+		if err != nil {
+			log.Printf("[ERROR] Messagehandlers Store: Could not convert from protobuff timestamp to time.Time")
+		}
+
 		// Check if we already have the file
 		if ok {
-			// Ok we have the file, check if old.expire is before req.expire
-			expireTimer := time.Now().Add(time.Duration(req.Expire) * time.Second)
+			if old.timestamp.Before(timestamp) || old.timestamp.Equal(timestamp) {
 
-			var republishTime time.Time
+				// Ok we have the file, check if old.expire is before req.expire
+				expireTimer := time.Now().Add(time.Duration(req.Expire) * time.Second)
 
-			if old.isOG {
-				republishTime = time.Now().Add(tRepublish * time.Second)
-			} else {
-				republishTime = time.Now().Add(tReplicate * time.Second)
+				var republishTime time.Time
+
+				if old.isOG {
+					republishTime = time.Now().Add(tRepublish * time.Second)
+				} else {
+					republishTime = time.Now().Add(tReplicate * time.Second)
+				}
+
+				if old.expire.Before(expireTimer) {
+					// If it is, update the expire time to req.Expire
+					network.kademlia.FileMemoryStore.Update(req.Hash, req.Data, old.isOG, expireTimer, republishTime, timestamp)
+				} else {
+					// Here since we might overrite data on nodes using store
+					network.kademlia.FileMemoryStore.Update(req.Hash, req.Data, old.isOG, old.expire, old.republish, timestamp)
+				}
 			}
-
-			if old.expire.Before(expireTimer) {
-				// If it is, update the expire time to req.Expire
-				network.kademlia.FileMemoryStore.Update(req.Hash, req.Data, old.isOG, expireTimer, republishTime)
-			} else {
-				// Here since we might overrite data on nodes using store
-				network.kademlia.FileMemoryStore.Update(req.Hash, req.Data, old.isOG, old.expire, old.republish)
-			}
-
 		} else {
-			// We do not have a file, just store it
+			//
+			// Here it's safe for us to just store the file with the timestamp!
+			//
 			originalPublisher := NewContact(NewKademliaID(req.OriginalPublisherID), req.OriginalPublisherAddr)
-			network.kademlia.FileMemoryStore.Put(&originalPublisher, req.Hash, req.Data, false, req.Expire)
-
+			network.kademlia.FileMemoryStore.Put(&originalPublisher, req.Hash, req.Data, false, req.Expire, timestamp)
 		}
 
 		resRPC := rpc.GetResponse()

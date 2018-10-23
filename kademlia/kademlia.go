@@ -240,8 +240,11 @@ func (kademlia *Kademlia) Store(hash string, data []byte) int {
 	// Get this node
 	thisNode := kademlia.Network.GetLocalContact()
 
+	// Get current timestamp for this store rpc
+	timestamp := time.Now()
+
 	// Store the file on this node
-	kademlia.FileMemoryStore.Put(thisNode, hash, data, true, tExpire)
+	kademlia.FileMemoryStore.Put(thisNode, hash, data, true, expireTimer, timestamp)
 	storeAmount++
 
 	reschan := make(chan bool)
@@ -251,8 +254,7 @@ func (kademlia *Kademlia) Store(hash string, data []byte) int {
 		if node.ID != thisNode.ID {
 			n := node
 			// Send a expire time that is tExpire seconds since i am the orignial publisher.
-			go kademlia.Network.SendStoreMessage(thisNode, &n, hash, data, reschan, int32(tExpire))
-
+			go kademlia.Network.SendStoreMessage(thisNode, &n, hash, data, reschan, int32(tExpire), timestamp)
 		}
 	}
 
