@@ -26,11 +26,11 @@ const alpha = 3
 func (kademlia *Kademlia) Bootstrap(bootstrap *Contact) {
 	log.Printf("[INFO] kademlia: Bootstrapping with contact %v\n", bootstrap)
 	kademlia.RoutingTable.AddContact(*bootstrap)
-	kademlia.FindNode(kademlia.Network.GetLocalContact().ID)
+	kademlia.FindNode(kademlia.Network.GetLocalContact().ID, K)
 }
 
-func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
-	contacts := kademlia.RoutingTable.FindClosestContacts(target, K)
+func (kademlia *Kademlia) FindNode(target *KademliaID, num int) []Contact {
+	contacts := kademlia.RoutingTable.FindClosestContacts(target, num)
 	candidates := NewTemporaryLookupTable(kademlia.Network.GetLocalContact(), target)
 	candidates.Append(contacts)
 	candidates.Sort()
@@ -46,18 +46,18 @@ func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
 		// special case, cant send to anybody, just return what I got now
 		if len(sendto) == 0 {
 			//log.Println("out of sendtos")
-			return candidates.GetAvailableContacts(K)
+			return candidates.GetAvailableContacts(num)
 		}
 		if !changed {
 			log.Println("did not change")
 			if panic {
 				// panic already sent, return best list
-				return candidates.GetAvailableContacts(K)
+				return candidates.GetAvailableContacts(num)
 			}
 			// "panic send"
 			log.Println("sending panic")
 			panic = true
-			sendto = candidates.GetNewCandidates(K)
+			sendto = candidates.GetNewCandidates(num)
 		} else {
 			panic = false // reset panic if new closest found
 		}
@@ -69,7 +69,6 @@ func (kademlia *Kademlia) FindNode(target *KademliaID) []Contact {
 			// this means that it wont end up in GetNewCandidates queries
 			log.Printf("[DEBUG] kademlia: Sending message to %v\n", candidate.Contact)
 			candidate.Queried = true
-			//go kademlia.Network.SendFindNodeBlaBla(candidate.Contact, reschan)
 			go kademlia.Network.SendFindNodeMessage(candidate.Contact, target, reschan)
 		}
 		for handled > 0 {
@@ -246,7 +245,7 @@ func (kademlia *Kademlia) Store(hash string, data []byte, isOG bool, expireTimer
 	storeAmount++
 
 	reschan := make(chan bool)
-	closest := kademlia.FindNode(NewKademliaID(hash))
+	closest := kademlia.FindNode(NewKademliaID(hash), K)
 
 	for _, node := range closest {
 		if node.ID != thisNode.ID {
@@ -288,7 +287,7 @@ func (kademlia *Kademlia) Store(hash string, data []byte, isOG bool, expireTimer
 func (kademlia *Kademlia) DeleteValue(hash string) int {
 	// Resources needed
 	reschan := make(chan bool)
-	closest := kademlia.FindNode(NewKademliaID(hash))
+	closest := kademlia.FindNode(NewKademliaID(hash), 2*K)
 	deleteAmount := 0
 
 	// Do a FIND_VALUE to get the original publisher
@@ -363,7 +362,7 @@ func (kademlia *Kademlia) Replicate() {
 	m := kademlia.FileMemoryStore.GetKeysAndValueForReplicate()
 
 	for key, value := range m {
-		closest := kademlia.FindNode(NewKademliaID(key))
+		closest := kademlia.FindNode(NewKademliaID(key), K)
 
 		iAmInClosest := false
 		for _, contact := range closest {

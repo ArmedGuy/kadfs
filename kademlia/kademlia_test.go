@@ -430,7 +430,7 @@ func TestKademliaFindNodePanic(t *testing.T) {
 		// this will timeout the response, but atleast we got the panic
 	})
 
-	testnet.origin.FindNode(nearId)
+	testnet.origin.FindNode(nearId, 20)
 	time.Sleep(3)
 
 	if !tryToFind {
