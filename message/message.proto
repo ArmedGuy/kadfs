@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package message;
 
+import "google/protobuf/timestamp.proto";
 // [RPC-LEN | RPC | Payload]
 
 message RPC {
@@ -43,6 +44,7 @@ message SendDataMessage {
     bytes Data = 3;
     string Hash = 4;
     int32 Expire = 5;
+    google.protobuf.Timestamp timestamp = 6;
 }
 
 message FindNodeRequest {

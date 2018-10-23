@@ -240,8 +240,11 @@ func (kademlia *Kademlia) Store(hash string, data []byte, isOG bool, expireTimer
 	// Get this node
 	thisNode := kademlia.Network.GetLocalContact()
 
+	// Get current timestamp for this store rpc
+	timestamp := time.Now()
+
 	// Store the file on this node
-	kademlia.FileMemoryStore.Put(thisNode, hash, data, true, expireTimer)
+	kademlia.FileMemoryStore.Put(thisNode, hash, data, true, expireTimer, timestamp)
 	storeAmount++
 
 	reschan := make(chan bool)
@@ -253,7 +256,7 @@ func (kademlia *Kademlia) Store(hash string, data []byte, isOG bool, expireTimer
 			// go kademlia.Network.SendStoreMessage(thisNode, &n, hash, data, reschan)
 			if isOG {
 				// Send a expire time that is tExpire seconds since i am the orignial publisher.
-				go kademlia.Network.SendStoreMessage(thisNode, &n, hash, data, reschan, int32(tExpire))
+				go kademlia.Network.SendStoreMessage(thisNode, &n, hash, data, reschan, int32(tExpire), timestamp)
 			} else {
 				// Send a expire time that is tReplicate seconds since i am not original publisher.
 				oldFile, ok1 := kademlia.FileMemoryStore.GetEntireFile(hash)
@@ -262,7 +265,7 @@ func (kademlia *Kademlia) Store(hash string, data []byte, isOG bool, expireTimer
 					log.Printf("[ERROR] Store: Could not find the file")
 				} else {
 					ogContact := oldFile.OriginalPublisher
-					go kademlia.Network.SendStoreMessage(ogContact, &n, hash, data, reschan, int32(tReplicate))
+					go kademlia.Network.SendStoreMessage(ogContact, &n, hash, data, reschan, int32(tReplicate), timestamp)
 				}
 			}
 

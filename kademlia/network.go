@@ -10,6 +10,7 @@ import (
 
 	"github.com/ArmedGuy/kadfs/message"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 )
 
 type KademliaNetwork interface {
@@ -18,7 +19,7 @@ type KademliaNetwork interface {
 	SendPingMessage(*Contact, chan bool)
 	SendFindNodeMessage(*Contact, *KademliaID, chan *LookupResponse)
 	SendFindValueMessage(*Contact, string, chan *FindValueResponse)
-	SendStoreMessage(*Contact, *Contact, string, []byte, chan bool, int32)
+	SendStoreMessage(*Contact, *Contact, string, []byte, chan bool, int32, time.Time)
 	SendDeleteMessage(*Contact, string, chan bool)
 	SetRequestHandler(string, func(*Contact, *RPCMessage))
 	SetState(*Kademlia)
@@ -247,7 +248,7 @@ func (network *Network) SendFindValueMessage(contact *Contact, hash string, resc
 	network.Transport.SendRPCMessage(contact, rpc)
 }
 
-func (network *Network) SendStoreMessage(originalPublisher *Contact, contact *Contact, hash string, data []byte, reschan chan bool, expire int32) {
+func (network *Network) SendStoreMessage(originalPublisher *Contact, contact *Contact, hash string, data []byte, reschan chan bool, expire int32, timestamp time.Time) {
 	rpc := network.NewRPC(contact, "STORE")
 	messageID := rpc.GetMessageId()
 
@@ -257,6 +258,15 @@ func (network *Network) SendStoreMessage(originalPublisher *Contact, contact *Co
 	payload.Data = data
 	payload.Hash = hash
 	payload.Expire = expire
+
+	// Convert time.Time to protobuff timestamp
+	protoc_timestamp, err := ptypes.TimestampProto(timestamp)
+	if err != nil {
+		log.Printf("[ERROR] network SendStoreMessage: Could not convert time.Time to protobuf timestamp!\n")
+	}
+
+	// Add timestamp to message payload
+	payload.Timestamp = protoc_timestamp
 
 	rpc.SetPayloadFromMessage(payload)
 

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/ArmedGuy/kadfs/message"
+	"github.com/golang/protobuf/ptypes"
 )
 
 func (network *Network) registerMessageHandlers() {
@@ -85,6 +86,13 @@ func (network *Network) registerMessageHandlers() {
 
 		old, ok := network.kademlia.FileMemoryStore.GetEntireFile(req.Hash)
 
+		// Get protobuff timestamp and convert back to time.Time
+		timestamp, err := ptypes.Timestamp(req.Timestamp)
+
+		if err != nil {
+			log.Printf("[ERROR] Messagehandlers Store: Could not convert from protobuff timestamp to time.Time")
+		}
+
 		// Check if we already have the file
 		if ok {
 			// Ok we have the file, check if old.expire is before req.expire
@@ -109,8 +117,7 @@ func (network *Network) registerMessageHandlers() {
 		} else {
 			// We do not have a file, just store it
 			originalPublisher := NewContact(NewKademliaID(req.OriginalPublisherID), req.OriginalPublisherAddr)
-			network.kademlia.FileMemoryStore.Put(&originalPublisher, req.Hash, req.Data, false, req.Expire)
-
+			network.kademlia.FileMemoryStore.Put(&originalPublisher, req.Hash, req.Data, false, req.Expire, timestamp)
 		}
 
 		resRPC := rpc.GetResponse()
