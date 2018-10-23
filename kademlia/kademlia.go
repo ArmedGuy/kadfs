@@ -244,7 +244,7 @@ func (kademlia *Kademlia) Store(hash string, data []byte) int {
 	timestamp := time.Now()
 
 	// Store the file on this node
-	kademlia.FileMemoryStore.Put(thisNode, hash, data, true, expireTimer, timestamp)
+	kademlia.FileMemoryStore.Put(thisNode, hash, data, true, tExpire, timestamp)
 	storeAmount++
 
 	reschan := make(chan bool)
@@ -349,7 +349,7 @@ func (kademlia *Kademlia) Republish() {
 
 		for _, contact := range closest {
 			n := contact
-			go kademlia.Network.SendStoreMessage(thisNode, &n, key, *value.Data, reschan, int32(tRepublish))
+			go kademlia.Network.SendStoreMessage(thisNode, &n, key, *value.Data, reschan, int32(tRepublish), value.timestamp)
 		}
 
 	}
@@ -375,7 +375,7 @@ func (kademlia *Kademlia) Replicate() {
 			thisNode := kademlia.Network.GetLocalContact()
 			for _, contact := range closest {
 				n := contact
-				go kademlia.Network.SendStoreMessage(thisNode, &n, key, *value.Data, reschan, int32(tReplicate))
+				go kademlia.Network.SendStoreMessage(thisNode, &n, key, *value.Data, reschan, int32(tReplicate), value.timestamp)
 			}
 
 		} else {

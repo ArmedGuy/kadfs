@@ -463,7 +463,7 @@ func TestKademliaExpireTimer(t *testing.T) {
 		log.Fatal("ERROR TestKademliaExpireTimer: File stored on too many nodes")
 	}
 
-	firstNode.FileMemoryStore.Update(fileHashString, fileContent1, true, time.Now(), time.Now())
+	firstNode.FileMemoryStore.Update(fileHashString, fileContent1, true, time.Now(), time.Now(), time.Now())
 
 	// Sleep for propagation
 	fmt.Println("Sleeping for 5 secs")
@@ -503,8 +503,8 @@ func TestKademliaRepublishTimer(t *testing.T) {
 
 	secondNode := testnet.nodelist[1]
 
-	firstNode.FileMemoryStore.Update(fileHashString, fileContent1, true, time.Now(), time.Now())
-	secondNode.FileMemoryStore.Update(fileHashString, fileContent1, false, time.Now(), time.Now())
+	firstNode.FileMemoryStore.Update(fileHashString, fileContent1, true, time.Now(), time.Now(), time.Now())
+	secondNode.FileMemoryStore.Update(fileHashString, fileContent1, false, time.Now(), time.Now(), time.Now())
 
 	log.Printf("Sleep for 2 seconds to trigger republish")
 	time.Sleep(2 * time.Second)
@@ -547,8 +547,8 @@ func TestKademliaReplicateTimer(t *testing.T) {
 
 	secondNode := testnet.nodelist[1]
 
-	firstNode.FileMemoryStore.Update(fileHashString, fileContent1, true, time.Now(), time.Now())
-	secondNode.FileMemoryStore.Update(fileHashString, fileContent1, false, time.Now(), time.Now())
+	firstNode.FileMemoryStore.Update(fileHashString, fileContent1, true, time.Now(), time.Now(), time.Now())
+	secondNode.FileMemoryStore.Update(fileHashString, fileContent1, false, time.Now(), time.Now(), time.Now())
 
 	log.Printf("Sleep for 2 seconds to trigger replicate")
 	time.Sleep(5 * time.Second)
@@ -598,7 +598,7 @@ func TestKademliaReplicateDelete(t *testing.T) {
 	noFileNode.FileMemoryStore.Put(firstNode.Network.GetLocalContact(), fileHashString, fileContent1, false, 1000, time.Now())
 
 	for i := range testnet.nodelist {
-		testnet.nodelist[i].FileMemoryStore.Update(fileHashString, fileContent1, false, time.Now(), time.Now())
+		testnet.nodelist[i].FileMemoryStore.Update(fileHashString, fileContent1, false, time.Now(), time.Now(), time.Now())
 	}
 
 	log.Printf("Sleep for 2 seconds to trigger replicate")
